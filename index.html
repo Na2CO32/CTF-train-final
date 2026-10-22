@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CTF 練習站</title>
+  <style>
+    :root {
+      --bg: #161b23;
+      --card: #fffdf9;
+      --text: #5b4b44;
+      --muted: #8f7f76;
+      --line: #ecdfcf;
+      --mint: #bfe3d6;
+      --mint-deep: #6fb59c;
+      --blue: #c9dceb;
+      --blue-deep: #86aac6;
+      --mono: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px 16px;
+      font-family: "Noto Sans TC", system-ui, -apple-system, "Microsoft JhengHei", sans-serif; color: var(--text);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 50% 0%, rgba(169, 236, 212, .14), transparent 60%),
+        linear-gradient(rgba(159, 211, 193, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(159, 211, 193, .06) 1px, transparent 1px);
+      background-size: auto, 40px 40px, 40px 40px;
+    }
+    main { width: min(760px, 100%); text-align: center; }
+    .kicker { font-family: var(--mono); font-size: .8rem; letter-spacing: .4em; color: var(--mint); }
+    h1 { margin: 6px 0 8px; font-size: clamp(2rem, 7vw, 3rem); font-weight: 900; color: #f6f1ea; text-shadow: 3px 3px 0 var(--mint-deep); }
+    .sub { margin: 0 0 30px; color: #c6cfd9; font-size: 1.05rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; text-align: left; }
+    a.card {
+      display: block; padding: 22px 22px 20px; border-radius: 26px; text-decoration: none; color: var(--text);
+      background: var(--card); border: 2px solid var(--line); box-shadow: 0 6px 0 rgba(0, 0, 0, .25);
+      transition: transform .15s, box-shadow .15s, border-color .15s;
+    }
+    a.card:hover { transform: translateY(-4px); border-color: var(--mint-deep); box-shadow: 0 8px 0 rgba(0, 0, 0, .25), 0 0 26px rgba(169, 236, 212, .45); }
+    .icon { font-size: 2.2rem; }
+    .tag { display: inline-block; margin-top: 10px; padding: 3px 12px; border-radius: 999px; font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; color: var(--mint); background: #252d3a; }
+    .card h2 { margin: 10px 0 6px; font-size: 1.35rem; }
+    .card p { margin: 0; color: var(--muted); line-height: 1.7; }
+    .go { display: inline-block; margin-top: 14px; padding: 8px 20px; border-radius: 999px; font-weight: 700; background: var(--mint); border: 2px solid var(--mint-deep); box-shadow: 0 4px 0 var(--mint-deep); }
+    .card.tool .go { background: var(--blue); border-color: var(--blue-deep); box-shadow: 0 4px 0 var(--blue-deep); }
+    footer { margin-top: 30px; color: #8d99a8; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="kicker">CTF TRAINING</div>
+    <h1>CTF 練習站</h1>
+    <p class="sub">選一個開始吧！</p>
+    <div class="cards">
+      <a class="card" href="final/三章合輯/index.html">
+        <div class="icon">🏦</div>
+        <span class="tag">3 CHAPTERS · WEB / CRYPTO</span>
+        <h2>伺服器搶劫案</h2>
+        <p>趁伺服器維修的 2 小時，潛入金幣男爵的金庫，把全服稅金偷回來。</p>
+        <span class="go">開始任務 ➜</span>
+      </a>
+      <a class="card tool" href="final/base64與ROT13的工具/index.html">
+        <div class="icon">🧰</div>
+        <span class="tag">TOOL</span>
+        <h2>Base64 與 ROT13 工具</h2>
+        <p>Base64、ROT13 與凱薩密碼的加解密小工具，解題時可以用。</p>
+        <span class="go">打開工具 ➜</span>
+      </a>
+    </div>
+    <footer>角色與故事皆為原創，僅供 CTF 練習使用</footer>
+  </main>
+</body>
+</html>
