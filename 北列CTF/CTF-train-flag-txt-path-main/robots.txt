@@ -1,2 +1,2 @@
 User-agent: *
-Disallow: c2VjcmV0X3BhdGhfYnlfQTM1OS9pbmRleC5odG1s
+Disallow: Fhcst{How_important_is_robots.txt}
