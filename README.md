@@ -9,7 +9,7 @@ https://na2co32.github.io/CTF-train-final/
 1. 按 **Code → Download ZIP** 下載並解壓縮。
 2. 直接點開最外層的 `index.html`，從首頁選擇要進入的頁面即可，不需要架設伺服器。
 
-> 有網路時字型與工具頁的樣式會比較完整；沒有網路時「伺服器搶劫案」仍可正常解題。
+> 有網路時字型與工具頁的樣式會比較完整；沒有網路時「伺服器搶劫案」仍可正常解題，「幸運大輪盤」也能正常使用（音效與選項儲存都不需要網路）。
 
 ## 內容
 
@@ -17,5 +17,6 @@ https://na2co32.github.io/CTF-train-final/
 |---|---|
 | 伺服器搶劫案（三章題目） | `final/三章合輯/index.html` |
 | Base64 與 ROT13 工具 | `final/base64與ROT13的工具/index.html` |
+| 幸運大輪盤 | `final/輪盤/index.html` |
 
 「伺服器搶劫案」的背景音樂 `Level Up!.mp3` 必須和它的 `index.html` 放在同一個資料夾，檔名不要更改。
