@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 🔑 金庫主鑰匙 FLAG：Fhcst{🔑🔑🔑} -->
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
@@ -711,16 +712,8 @@
 
       <h3>💡 提示</h3>
       <details>
-        <summary>提示 1：從哪裡開始？</summary>
-        <p>先打開瀏覽器的開發者工具。你可以按 <kbd>F12</kbd>，或在頁面上按右鍵並選擇「檢查」。</p>
-      </details>
-      <details>
-        <summary>提示 2：看哪裡？</summary>
-        <p>畫面上看不到，不代表原始碼裡沒有。試著查看這個頁面的 HTML，並留意看起來不像一般文字的內容。</p>
-      </details>
-      <details>
-        <summary>提示 3：線索的形式</summary>
-        <p>有些文字會使用一種常見的編碼方式表示。若內容由英文字母、數字，以及偶爾出現的 <code>=</code> 組成，可以思考它可能是什麼格式，再拿去 <a class="inline" href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer">CyberChef ↗</a> 解碼看看。</p>
+        <summary>提示</summary>
+        <p>檢查原始碼</p>
       </details>
 
       <div class="fv-box">
@@ -764,11 +757,6 @@
     <div class="scene-hint">點一下或按空白鍵繼續 ▸</div>
   </div>
 
-  <script>
-    // 任務資料：這段內容刻意不顯示在網頁畫面中。
-    // 請自行觀察原始碼並判斷其編碼形式。
-    const secret = "Rmhjc3R78J+UkfCflJHwn5SRfQ==";
-  </script>
   <script>
     // 背景：一點透視的機房走道。世界座標投影到畫面：x = VX + X*F/Z、y = VY + Y*F/Z（Y 往下為正）
     // 用固定種子產生，每次打開都長一樣；只在載入時畫一次，會閃的燈和資料流放在另一層
@@ -1428,8 +1416,8 @@
         { who: '阿啟', avatar: 'reboot', text: '「不會擺在表面上」……隊長，難道真正的鑰匙，藏在網頁的原始碼裡？' }
       ],
       2: [
-        { tag: 'CHAPTER 03 · CLEAR', visual: 'terminal', who: '阿啟', avatar: 'reboot', text: '解碼成功！這就是金庫的主鑰匙！我、我這次真的有幫上忙吧？',
-          param: ['$ view-source:baron-bank.gold', '&gt; 發現可疑字串 Rmhjc3R7...', '&gt; base64 --decode', '&gt; 🔑 金庫主鑰匙 已取得', '&gt; 開始轉帳 ...'] },
+        { tag: 'CHAPTER 03 · CLEAR', visual: 'terminal', who: '阿啟', avatar: 'reboot', text: '找到了！這就是金庫的主鑰匙！我、我這次真的有幫上忙吧？',
+          param: ['$ view-source:baron-bank.gold', '&gt; 第 2 行發現註解 &lt;!-- 🔑 ... --&gt;', '&gt; 🔑 金庫主鑰匙 已取得', '&gt; 開始轉帳 ...'] },
         { tag: 'FINAL · 稅金歸還', visual: 'coins', who: '系統', avatar: 'sys', text: '全服稅金已歸還給所有玩家。' },
         { visual: 'logout', who: '金幣男爵', avatar: 'baron', text: '不——我的金幣！我要申訴！我要找客服！' },
         { who: '系統', avatar: 'sys', text: '【系統】金幣男爵 已離線。' },
@@ -1465,7 +1453,7 @@
     })();
   </script>
   <script>
-    // FLAG 驗證器與章節切換：只比對雜湊值，原始碼裡不放明文 FLAG
+    // FLAG 驗證器與章節切換：只比對雜湊值（第三章的 FLAG 刻意以註解放在原始碼第 2 行）
     (() => {
       // 進度只存在記憶體，重新整理就回到未通關狀態；順便清掉舊版存在 localStorage 的進度
       const solved = [false, false, false];
