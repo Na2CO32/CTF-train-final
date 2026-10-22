@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>伺服器搶劫案</title>
+  <!-- 沒網路時會自動退回系統字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Huninn&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fbf6ee;
+      --card: #fffdf9;
+      --card-soft: #fff7ec;
+      --text: #5b4b44;
+      --muted: #8f7f76;
+      --line: #ecdfcf;
+      --pink: #f2c4cb;
+      --pink-deep: #d9939f;
+      --blue: #c9dceb;
+      --blue-deep: #86aac6;
+      --yellow: #f6e3b0;
+      --yellow-deep: #d4b260;
+      --green: #cfe3c8;
+      --green-deep: #7fae78;
+      --mint: #bfe3d6;
+      --mint-deep: #6fb59c;
+      --navy: #252d3a;
+      --navy-2: #2f3949;
+      --bad: #cf7f7f;
+      --display: "Baloo 2", "Huninn", "Noto Sans TC", system-ui, sans-serif;
+      --body: "Huninn", "Noto Sans TC", system-ui, -apple-system, "Microsoft JhengHei", sans-serif;
+      --mono: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--text); font-family: var(--body); overflow-x: hidden;
+      background: #161b23;
+    }
+    body.noscroll { overflow: hidden; }
+
+    /* ===== 背景：機房走道，兩排伺服器機櫃延伸到盡頭的男爵金庫；程式只在載入時畫一次 ===== */
+    .room { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .room svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .room::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 35%, transparent 45%, rgba(8, 10, 14, .55)); }
+    /* 會動的東西都放在另一層小 SVG，避免整片背景每一格都重畫 */
+    .led-blink { animation: blink 1.4s steps(1) infinite; }
+    .stream { fill: none; stroke: #a9ecd4; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 8; opacity: .55; animation: stream 1.6s linear infinite; }
+    @keyframes stream { to { stroke-dashoffset: -10; } }
+    .vault-ring { fill: none; stroke: #e6cf8f; stroke-width: 2; stroke-dasharray: 6 5; opacity: .4; transform-box: fill-box; transform-origin: center; animation: spin 24s linear infinite; }
+
+    /* ===== 版面 ===== */
+    .wrap { position: relative; z-index: 2; width: min(860px, 100%); margin: 0 auto; padding: 28px 16px 80px; }
+
+    header.hero { text-align: center; padding: 18px 0 6px; }
+    .status {
+      display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 700;
+      color: var(--text); padding: 6px 16px; border-radius: 999px; background: var(--card); border: 2px solid var(--line);
+    }
+    .status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--pink-deep); animation: blink 1.2s infinite; }
+    .status b { font-family: var(--mono); letter-spacing: .05em; }
+    @keyframes blink { 50% { opacity: .25; } }
+
+    .cast { display: flex; justify-content: center; align-items: flex-end; gap: 6px; margin: 18px 0 0; }
+    .cast svg { width: clamp(62px, 15vw, 88px); height: auto; animation: bob 2.4s ease-in-out infinite; }
+    .cast svg:nth-child(2) { animation-delay: .3s; }
+    .cast svg:nth-child(4) { animation-delay: .6s; width: clamp(70px, 17vw, 100px); }
+    .vs {
+      align-self: center; margin: 0 8px; padding: 2px 12px; border-radius: 999px; font-family: var(--display); font-weight: 800;
+      background: var(--navy); color: var(--mint); border: 2px solid var(--mint-deep);
+    }
+    @keyframes bob { 50% { transform: translateY(-6px); } }
+
+    .kicker { display: block; margin-top: 10px; font-family: var(--mono); font-size: .8rem; letter-spacing: .4em; color: var(--mint); }
+    .title {
+      position: relative; display: inline-block; margin: 2px 0 6px; font-weight: 900; font-size: clamp(2.1rem, 7.5vw, 3.4rem); line-height: 1.2; letter-spacing: .06em;
+      color: #f6f1ea; text-shadow: 3px 3px 0 var(--mint-deep), 0 0 24px rgba(8, 10, 14, .9);
+    }
+    .title::before, .title::after {
+      content: attr(data-text); position: absolute; inset: 0; text-shadow: none; pointer-events: none; clip-path: inset(0 0 100% 0);
+    }
+    .title::before { color: var(--mint); animation: glitchA 4.2s infinite steps(1); }
+    .title::after { color: var(--pink); animation: glitchB 3.4s infinite steps(1); }
+    @keyframes glitchA {
+      0%, 88%, 100% { clip-path: inset(0 0 100% 0); transform: none; }
+      89% { clip-path: inset(12% 0 58% 0); transform: translateX(-6px); }
+      92% { clip-path: inset(62% 0 12% 0); transform: translateX(5px); }
+      95% { clip-path: inset(35% 0 38% 0); transform: translateX(-3px); }
+    }
+    @keyframes glitchB {
+      0%, 84%, 100% { clip-path: inset(0 0 100% 0); transform: none; }
+      85% { clip-path: inset(70% 0 4% 0); transform: translateX(6px); }
+      89% { clip-path: inset(6% 0 72% 0); transform: translateX(-5px); }
+    }
+    .typing { min-height: 1.8em; color: #d5dce4; text-shadow: 0 1px 8px rgba(8, 10, 14, .95); font-size: 1.05rem; margin: 6px 0 0; }
+    .typing::after { content: "▍"; color: var(--mint-deep); animation: blink 1s infinite; margin-left: 2px; }
+
+    /* ===== 卡片面板 ===== */
+    .panel { position: relative; background: var(--card); border: 2px solid var(--line); border-radius: 28px; box-shadow: 0 6px 0 rgba(0, 0, 0, .25); }
+
+    .toolbar { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 20px; margin: 24px 0 18px; }
+    .name-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 1rem; }
+    .tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+
+    input[type="text"] {
+      flex: 1 1 140px; min-width: 0; background: var(--card-soft); border: 2px solid var(--line); color: var(--text);
+      padding: 10px 16px; border-radius: 999px; font-size: 1rem; font-family: inherit; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type="text"]:focus { border-color: var(--mint-deep); box-shadow: 0 0 0 4px rgba(191, 227, 214, .6); }
+
+    .btn {
+      position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 48px; min-width: 140px; padding: 0 22px; white-space: nowrap;
+      border: 2px solid var(--pink-deep); cursor: pointer; color: var(--text); font-family: inherit; font-weight: 700;
+      font-size: 1rem; border-radius: 999px; background: var(--pink);
+      box-shadow: 0 4px 0 var(--pink-deep); transition: transform .12s, box-shadow .12s;
+    }
+    .btn::after, .chef::after {
+      content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; pointer-events: none;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .65), transparent); transform: skewX(-20deg);
+    }
+    .btn:hover::after, .chef:hover::after { animation: shine .6s ease-out; }
+    @keyframes shine { to { left: 130%; } }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--pink-deep); }
+    .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pink-deep); }
+    .btn.blue { background: var(--blue); border-color: var(--blue-deep); box-shadow: 0 4px 0 var(--blue-deep); }
+    .btn.blue:hover { box-shadow: 0 5px 0 var(--blue-deep); }
+    .btn.blue:active { box-shadow: 0 1px 0 var(--blue-deep); }
+    .btn.mint { background: var(--mint); border-color: var(--mint-deep); box-shadow: 0 4px 0 var(--mint-deep); }
+    .btn.mint:hover { box-shadow: 0 5px 0 var(--mint-deep); }
+    .btn.mint:active { box-shadow: 0 1px 0 var(--mint-deep); }
+
+    .chef {
+      position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 48px; min-width: 140px; padding: 0 18px; text-decoration: none; color: var(--text);
+      border-radius: 999px; font-weight: 700; white-space: nowrap;
+      background: var(--yellow); border: 2px solid var(--yellow-deep); box-shadow: 0 4px 0 var(--yellow-deep);
+      transition: transform .12s;
+    }
+    .chef:hover { transform: translateY(-2px); }
+    .chef small { display: block; font-weight: 400; color: var(--muted); font-size: .72rem; line-height: 1.1; }
+    .chef > span:last-child { line-height: 1.15; }
+    .chef .ico { font-size: 1.4rem; }
+
+    /* ===== 進度條 ===== */
+    .progress-wrap { margin: 0 4px 18px; }
+    .progress-label { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; color: #c6cfd9; margin-bottom: 8px; }
+    .progress-label > span:first-child { font-family: var(--mono); letter-spacing: .1em; }
+    .progress-label b { color: #f6f1ea; }
+    .bar { position: relative; height: 16px; border-radius: 999px; background: var(--card); border: 2px solid var(--line); }
+    .bar-fill {
+      position: relative; height: 100%; width: 0; border-radius: inherit; transition: width 1s cubic-bezier(.2, .9, .2, 1);
+      background: linear-gradient(-45deg, var(--mint) 25%, #e3f4ed 25% 50%, var(--mint) 50% 75%, #e3f4ed 75%);
+      background-size: 28px 28px; animation: stripes 1s linear infinite; box-shadow: 0 0 14px rgba(169, 236, 212, .7);
+    }
+    @keyframes stripes { to { background-position: 28px 0; } }
+    .bar-fill::after { content: "💰"; position: absolute; right: -12px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; }
+
+    /* ===== 章節卡片 ===== */
+    .chapters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+    .ch-card {
+      position: relative; cursor: pointer; text-align: left; color: var(--text); font-family: inherit;
+      padding: 16px 16px 14px; border-radius: 24px; border: 2px solid var(--line); background: var(--card);
+      box-shadow: 0 5px 0 var(--line); transition: transform .15s, border-color .2s, background .2s; overflow: hidden;
+    }
+    .ch-card:hover { transform: translateY(-4px); border-color: var(--mint); box-shadow: 0 6px 0 var(--line), 0 0 0 4px rgba(191, 227, 214, .35), 0 0 26px rgba(169, 236, 212, .45); }
+    .ch-card[aria-selected="true"] { border-color: var(--mint-deep); background: #eef8f3; box-shadow: 0 5px 0 var(--mint-deep); animation: breathe 2.4s ease-in-out infinite; }
+    @keyframes breathe { 50% { box-shadow: 0 5px 0 var(--mint-deep), 0 0 0 5px rgba(169, 236, 212, .35), 0 0 30px rgba(169, 236, 212, .5); } }
+    .ch-card .emoji { font-size: 2rem; display: block; transition: transform .3s; }
+    .ch-card:hover .emoji { transform: scale(1.15) rotate(-8deg); }
+    .ch-card .num { display: block; margin-top: 6px; font-family: var(--mono); font-size: .76rem; letter-spacing: .12em; color: var(--mint-deep); }
+    .ch-card .name { display: block; font-weight: 800; font-size: 1.05rem; margin-top: 2px; }
+    .ch-card .stamp {
+      position: absolute; top: 10px; right: 10px; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+      font-family: var(--display); font-size: .78rem; font-weight: 800; color: var(--green-deep);
+      border: 3px solid var(--green-deep); background: rgba(207, 227, 200, .6); transform: rotate(-12deg);
+      opacity: 0; transition: opacity .4s;
+    }
+    .ch-card.solved .stamp { opacity: 1; }
+    .ch-card.just .stamp { animation: stampIn .6s cubic-bezier(.2, 1.8, .4, 1) both; }
+    @keyframes stampIn { from { opacity: 0; transform: rotate(-12deg) scale(3); } }
+    .ch-card.locked { cursor: not-allowed; }
+    .ch-card.locked > :not(.stamp) { opacity: .5; }
+    .ch-card.locked .emoji, .ch-card.locked .name { filter: grayscale(1); }
+    .ch-card.locked:hover { transform: none; border-color: var(--line); }
+    .ch-card.locked:hover .emoji { transform: none; }
+    .ch-card.locked::after {
+      content: "🔒 完成上一章解鎖"; position: absolute; top: 12px; right: 12px; padding: 2px 10px; border-radius: 999px;
+      font-size: .72rem; color: var(--muted); background: var(--card-soft); border: 2px solid var(--line);
+    }
+
+    /* ===== 章節內容 ===== */
+    section.chapter { display: none; padding: clamp(24px, 5vw, 46px); overflow: hidden; }
+    section.chapter.active { display: block; animation: chapterIn .55s steps(1, end) both, enter .5s cubic-bezier(.2, .9, .2, 1); }
+    @keyframes enter { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+    @keyframes chapterIn {
+      0% { clip-path: inset(0 0 100% 0); }
+      25% { clip-path: inset(0 0 62% 0); }
+      45% { clip-path: inset(0 0 30% 0); }
+      65% { clip-path: inset(0 0 8% 0); }
+      100% { clip-path: inset(0); }
+    }
+    section.chapter::before {
+      content: ""; position: absolute; inset: 12px; pointer-events: none; --c: var(--mint-deep);
+      background:
+        linear-gradient(var(--c), var(--c)) top left / 28px 3px no-repeat, linear-gradient(var(--c), var(--c)) top left / 3px 28px no-repeat,
+        linear-gradient(var(--c), var(--c)) top right / 28px 3px no-repeat, linear-gradient(var(--c), var(--c)) top right / 3px 28px no-repeat,
+        linear-gradient(var(--c), var(--c)) bottom left / 28px 3px no-repeat, linear-gradient(var(--c), var(--c)) bottom left / 3px 28px no-repeat,
+        linear-gradient(var(--c), var(--c)) bottom right / 28px 3px no-repeat, linear-gradient(var(--c), var(--c)) bottom right / 3px 28px no-repeat;
+    }
+    section.chapter::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(transparent 0 88%, rgba(111, 181, 156, .12) 96%, transparent);
+      animation: panelScan 7s linear infinite;
+    }
+    @keyframes panelScan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+    section.chapter > * { position: relative; z-index: 1; }
+
+    .tag {
+      display: inline-block; font-family: var(--mono); font-size: .78rem; letter-spacing: .1em; color: var(--mint);
+      border-radius: 999px; padding: 5px 14px; background: var(--navy);
+    }
+    h2.chapter-title { margin: 16px 0 14px; font-size: clamp(1.7rem, 5.5vw, 2.4rem); font-weight: 900; text-shadow: 2px 2px 0 var(--yellow); }
+    h3 { margin: 30px 0 10px; font-size: 1.3rem; color: var(--text); }
+    p { color: #6f605a; line-height: 1.95; margin: 0 0 12px; font-size: 1.18rem; }
+    strong { color: var(--text); }
+    .player-name { color: var(--mint-deep); font-weight: 800; }
+    .say { display: inline-block; padding: 2px 12px; border-radius: 14px; background: var(--card-soft); border: 2px dashed var(--line); color: var(--text); }
+
+    .mission { position: relative; margin: 26px 0; padding: 18px 20px 12px; border-radius: 22px; background: #fff6e3; border: 2px solid var(--yellow-deep); }
+    .mission > strong { display: block; margin-bottom: 6px; }
+
+    details { margin-top: 12px; border: 2px solid var(--line); border-radius: 20px; padding: 14px 18px; background: var(--card-soft); transition: border-color .2s; }
+    details:hover { border-color: var(--yellow-deep); }
+    details[open] { border-color: var(--yellow-deep); background: #fff6e3; }
+    summary { cursor: pointer; font-size: 1.12rem; font-weight: 700; color: var(--text); list-style: none; display: flex; align-items: center; gap: 10px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "🔒"; transition: transform .3s; }
+    details[open] summary::before { content: "🔓"; transform: rotate(-12deg) scale(1.15); }
+    details p { margin: 10px 0 2px; }
+    code, kbd { font-family: var(--mono); color: var(--text); background: var(--blue); padding: 2px 8px; border-radius: 8px; font-size: .92em; }
+    a.inline { color: var(--blue-deep); font-weight: 700; text-decoration: none; border-bottom: 2px dashed var(--blue-deep); }
+
+    /* ===== 第一章：模擬瀏覽器 ===== */
+    .browser { margin: 22px 0 6px; border-radius: 22px; overflow: hidden; border: 2px solid var(--blue-deep); box-shadow: 0 5px 0 var(--blue-deep); }
+    .browser-top { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--blue); flex-wrap: wrap; }
+    .dots { display: flex; gap: 6px; }
+    .dots i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .dots i:nth-child(1) { background: #eaa7a7; } .dots i:nth-child(2) { background: #f0d48f; } .dots i:nth-child(3) { background: #a9cfa0; }
+    .address { flex: 1 1 260px; display: flex; align-items: center; min-width: 0; background: #fff; border-radius: 999px; padding: 0 6px 0 16px; }
+    .address .host { font-family: var(--mono); font-size: .9rem; color: var(--muted); white-space: nowrap; }
+    .address input[type="text"] { border: 0; background: transparent; padding: 8px 6px 8px 0; font-family: var(--mono); font-size: .9rem; box-shadow: none; border-radius: 0; }
+    .address input[type="text"]:focus { box-shadow: none; }
+    .viewport { min-height: 170px; padding: 20px; background: #fff; color: var(--text); font-size: .95rem; }
+    .viewport pre { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: var(--mono); font-size: .92rem; color: var(--text); line-height: 1.7; }
+    .viewport .home { text-align: center; padding: 10px 0; }
+    .viewport .home svg { width: 74px; height: auto; }
+    .viewport .home h4 { margin: 4px 0 8px; font-size: 1.3rem; }
+    .viewport .e404 { text-align: center; padding: 18px 0; }
+    .viewport .e404 b { display: block; font-size: 3rem; color: var(--pink-deep); font-family: var(--display); }
+    .viewport.loading { position: relative; }
+    .viewport.loading::after { content: ""; position: absolute; left: 0; top: 0; height: 4px; width: 100%; background: var(--mint-deep); transform-origin: left; animation: load .45s ease-out; }
+    @keyframes load { from { transform: scaleX(0); } }
+
+    /* ===== 第二章：鸚鵡語音紀錄 ===== */
+    .voice { margin: 26px 0; border-radius: 22px; overflow: hidden; background: var(--navy); color: var(--mint); box-shadow: 0 5px 0 #1a212b; }
+    .voice-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-family: var(--mono); font-size: .8rem; background: var(--navy-2); }
+    .voice-head svg { width: 30px; height: auto; }
+    .voice-head .rec { margin-left: auto; color: var(--pink); animation: blink 1.2s infinite; }
+    .voice-body { padding: 20px 18px 22px; text-align: center; }
+    .wave { display: flex; justify-content: center; align-items: center; gap: 4px; height: 40px; margin-bottom: 14px; }
+    .wave i { width: 5px; height: 100%; border-radius: 3px; background: var(--mint-deep); transform: scaleY(.3); animation: wave 1.1s ease-in-out infinite; }
+    .wave i:nth-child(3n) { animation-delay: -.3s; }
+    .wave i:nth-child(3n+1) { animation-delay: -.7s; }
+    .wave i:nth-child(4n) { animation-duration: .8s; }
+    @keyframes wave { 50% { transform: scaleY(1); } }
+    .cipher-text { font-family: var(--mono); font-size: clamp(1.4rem, 5vw, 2rem); letter-spacing: .2em; color: #fff; font-weight: 700; word-break: break-all; user-select: all; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .result { min-height: 1.5em; line-height: 1.8; color: var(--muted); }
+    .result.ok { background: #f1f8ee; border: 2px solid var(--green-deep); color: var(--text); padding: 18px; border-radius: 22px; animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+    .result.bad { color: var(--bad); }
+    .flag { display: inline-block; margin-top: 8px; font-family: var(--mono); font-size: 1.4rem; color: var(--text); user-select: all; background: #fff; padding: 2px 12px; border-radius: 12px; }
+    @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+
+    /* ===== FLAG 驗證器 ===== */
+    .fv-box { position: relative; margin-top: 30px; padding: 20px; border-radius: 24px; background: #eef8f3; border: 2px solid var(--mint-deep); }
+    .fv-box .row { margin-bottom: 0; }
+    .fv-box input[type="text"] { font-family: var(--mono); background: #fff; }
+    .fv-title { color: var(--text); font-weight: 900; margin: 0 0 12px; font-size: 1.1rem; }
+    .fv-msg { margin: 12px 0 0; min-height: 1.4em; line-height: 1.7; color: var(--text); }
+    .fv-msg.ok { color: var(--green-deep); font-weight: 700; animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+    .fv-msg.bad { color: var(--bad); }
+    .fv-box.win { border-color: var(--green-deep); background: #f1f8ee; }
+    .shake { animation: shake .45s; }
+    @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+
+    footer.chapter-foot { margin-top: 28px; padding-top: 18px; border-top: 2px dashed var(--line); font-size: .9rem; }
+    .next { display: inline-flex; margin-top: 4px; }
+    .next[hidden] { display: none; }
+
+    .replay { display: none; margin-left: 10px; }
+    .replay.on { display: inline-flex; }
+
+    footer.site { text-align: center; margin-top: 30px; color: #c6cfd9; font-size: .82rem; line-height: 1.8; }
+
+    /* ===== 過場動畫（HUD 風格） ===== */
+    .scene {
+      position: fixed; inset: 0; z-index: 80; display: none; flex-direction: column; padding: 18px 16px 16px; cursor: pointer;
+      background-color: var(--navy); color: #fff; overflow: hidden; user-select: none;
+      background-image:
+        linear-gradient(rgba(191, 227, 214, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(191, 227, 214, .06) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .scene.show { display: flex; animation: sceneIn .5s ease-out; }
+    @keyframes sceneIn { 0% { transform: scale(.7, .004); } 45% { transform: scale(1, .004); } 100% { transform: none; } }
+
+    .access { position: fixed; inset: 0; z-index: 85; display: none; place-items: center; pointer-events: none; background: rgba(12, 16, 22, .72); }
+    .access.show { display: grid; animation: accessFade 1.1s forwards; }
+    @keyframes accessFade { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
+    .access-box { position: relative; overflow: hidden; text-align: center; padding: 22px 36px; border-radius: 26px; border: 3px solid var(--mint-deep); background: rgba(37, 45, 58, .92); animation: slam .45s both; }
+    .access-box::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(169, 236, 212, .3), transparent); transform: translateX(-100%); animation: sweepX .9s .2s ease-out forwards; }
+    @keyframes sweepX { to { transform: translateX(100%); } }
+    .access-sub { font-family: var(--mono); font-size: .8rem; letter-spacing: .3em; color: var(--mint); }
+    .access-text { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 8vw, 4rem); line-height: 1.2; letter-spacing: .06em; color: #fff; }
+    .deny-flash { position: fixed; inset: 0; z-index: 84; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px rgba(217, 147, 159, .75); }
+    .deny-flash.on { animation: deny .55s; }
+    @keyframes deny { 0%, 100% { opacity: 0; } 15%, 55% { opacity: 1; } 35% { opacity: .3; } }
+    .fv-box.denied { border-color: var(--pink-deep); background: #fdf0f1; }
+    .scene-sweep {
+      position: absolute; left: 0; right: 0; top: 0; height: 140px; pointer-events: none;
+      background: linear-gradient(transparent, rgba(191, 227, 214, .08), transparent);
+      animation: sweep 5s linear infinite;
+    }
+    @keyframes sweep { from { transform: translateY(-140px); } to { transform: translateY(100vh); } }
+    .corner { position: absolute; width: 26px; height: 26px; border: 3px solid var(--mint-deep); pointer-events: none; }
+    .corner.tl { left: 10px; top: 10px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
+    .corner.tr { right: 10px; top: 10px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+    .corner.bl { left: 10px; bottom: 10px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
+    .corner.br { right: 10px; bottom: 10px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+    .hud { position: relative; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: .8rem; color: var(--mint); padding: 4px 30px 0; }
+    .hud .rec { color: var(--pink); animation: blink 1.2s infinite; }
+    .hud .clock { margin-left: auto; }
+    .scene-skip {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 2; padding: 4px 14px; border-radius: 999px; cursor: pointer;
+      font-family: var(--mono); font-size: .8rem; color: var(--mint); background: rgba(191, 227, 214, .1); border: 2px solid rgba(191, 227, 214, .35);
+    }
+    .scene-stage { position: relative; flex: 1; display: grid; place-items: center; min-height: 0; padding: 14px 0; }
+    .scene-dialog {
+      position: relative; width: min(760px, 100%); margin: 0 auto; display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 18px; border-radius: 24px; background: var(--card); color: var(--text); border: 3px solid var(--mint-deep);
+      box-shadow: 0 6px 0 #1a212b;
+    }
+    .scene-dialog .avatar { flex: none; width: 64px; height: 64px; border-radius: 50%; background: var(--card-soft); border: 2px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+    .scene-dialog .avatar svg { width: 58px; height: auto; }
+    .scene-dialog .avatar .emo { font-size: 2rem; }
+    .dialog-body { flex: 1; min-width: 0; }
+    .scene-dialog .who { font-weight: 900; color: var(--mint-deep); margin-bottom: 2px; }
+    .scene-dialog .line { min-height: 3.4em; line-height: 1.7; font-size: 1.08rem; }
+    .scene-dialog .aside { font-size: .9rem; color: var(--muted); opacity: 0; transition: opacity .3s; }
+    .scene-dialog .aside.on { opacity: 1; }
+    .scene-hint { text-align: center; margin-top: 10px; font-family: var(--mono); font-size: .78rem; color: rgba(191, 227, 214, .7); animation: blink 1.6s infinite; }
+
+    /* 畫面元件 */
+    .v-card { width: min(520px, 100%); border-radius: 24px; background: var(--navy-2); border: 2px solid rgba(191, 227, 214, .3); padding: 18px 20px; }
+    .v-head { font-family: var(--mono); font-size: .8rem; color: var(--mint); letter-spacing: .1em; margin-bottom: 12px; }
+
+    .v-broadcast { animation: glitchIn .6s steps(1) both; border-color: var(--pink-deep); }
+    .v-broadcast .v-head { color: var(--pink); }
+    .bc-body { display: flex; align-items: center; gap: 18px; }
+    .bc-body svg { width: clamp(90px, 24vw, 130px); height: auto; flex: none; animation: bob 1.6s ease-in-out infinite; }
+    .bc-body b { font-size: 1.2rem; color: var(--yellow); }
+    .bc-body p { color: #dfe7ef; margin: 4px 0 0; }
+    .bc-big { font-family: var(--display); font-weight: 800; font-size: clamp(2.6rem, 11vw, 4rem); line-height: 1; color: var(--pink); animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { transform: scale(1.08); } }
+    @keyframes glitchIn {
+      0% { clip-path: inset(0 0 100% 0); transform: translateX(0); }
+      20% { clip-path: inset(30% 0 40% 0); transform: translateX(-10px); }
+      40% { clip-path: inset(5% 0 70% 0); transform: translateX(8px); }
+      60% { clip-path: inset(50% 0 10% 0); transform: translateX(-4px); }
+      80%, 100% { clip-path: inset(0); transform: none; }
+    }
+
+    .v-team { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .mate { display: flex; align-items: center; gap: 12px; width: 250px; padding: 12px 14px; border-radius: 22px; background: var(--navy-2); border: 2px solid rgba(191, 227, 214, .3); }
+    .mate.l { animation: slideL .6s cubic-bezier(.2, 1.4, .4, 1) both; }
+    .mate.r { animation: slideR .6s .25s cubic-bezier(.2, 1.4, .4, 1) both; }
+    @keyframes slideL { from { opacity: 0; transform: translateX(-60px); } }
+    @keyframes slideR { from { opacity: 0; transform: translateX(60px); } }
+    .mate svg { width: 76px; height: auto; flex: none; }
+    .mate b { display: block; color: var(--yellow); font-size: 1.1rem; }
+    .mate span { display: block; font-size: .85rem; color: #dfe7ef; }
+    .stat { margin-top: 6px; font-family: var(--mono); font-size: .7rem; color: var(--mint); }
+    .stat b { display: block; width: 120px; height: 8px; margin-top: 3px; border-radius: 999px; background: #3b4657; overflow: hidden; }
+    .stat i { display: block; height: 100%; background: var(--mint-deep); transform-origin: left; transform: scaleX(var(--v)); animation: grow 1s .6s both; }
+    @keyframes grow { from { transform: scaleX(0); } }
+
+    .v-monitor { width: min(420px, 100%); padding: 14px; border-radius: 24px; background: #3b4657; border: 3px solid #4a566a; }
+    .mon-screen { position: relative; padding: 26px 20px; border-radius: 16px; background: #10151d; font-family: var(--mono); text-align: center; color: var(--mint); overflow: hidden; }
+    .mon-text { animation: blink .5s steps(1) 4; }
+    .mon-bar { height: 12px; margin: 14px 0 10px; border-radius: 999px; background: #2a3442; overflow: hidden; }
+    .mon-bar i { display: block; height: 100%; background: var(--mint-deep); transform-origin: left; animation: grow 2.2s .3s linear both; }
+    .mon-ok { color: var(--yellow); animation: fadein .3s 2.6s both; }
+    @keyframes fadein { from { opacity: 0; } }
+    @keyframes appear { to { opacity: 1; } }
+
+    .v-count { text-align: center; }
+    .v-count .ring { position: relative; width: clamp(180px, 50vw, 240px); margin: 0 auto; }
+    .v-count svg { width: 100%; height: auto; transform: rotate(-90deg); }
+    .v-count .trk { fill: none; stroke: #3b4657; stroke-width: 8; }
+    .v-count .prg { fill: none; stroke: var(--pink); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 327; transition: stroke-dashoffset 1s linear; }
+    .cd-num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--mono); font-size: clamp(1.6rem, 7vw, 2.2rem); color: #fff; }
+    .cd-label { margin-top: 12px; font-family: var(--mono); font-size: .85rem; color: var(--pink); letter-spacing: .1em; }
+
+    .v-term { width: min(560px, 100%); border-radius: 20px; overflow: hidden; background: #10151d; border: 2px solid rgba(191, 227, 214, .3); }
+    .term-head { padding: 8px 14px; font-family: var(--mono); font-size: .76rem; color: #7d8a9c; background: #1b222d; }
+    .term-body { padding: 16px 18px; font-family: var(--mono); font-size: .92rem; line-height: 1.9; color: var(--mint); word-break: break-all; }
+    .term-body div { animation: termIn .01s both; }
+    .term-body div:last-child { color: var(--yellow); }
+    @keyframes termIn { from { opacity: 0; } }
+
+    .v-map svg { width: 100%; height: auto; display: block; }
+    .v-map .wall { fill: none; stroke: #6f7d91; stroke-width: 3; stroke-linecap: round; }
+    .v-map .route { fill: none; stroke: var(--mint); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 520; stroke-dashoffset: 520; animation: draw 2s .3s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    .v-map .target { fill: var(--pink); opacity: 0; transform-box: fill-box; transform-origin: center; animation: appear .3s 2.2s forwards, pulse 1s 2.5s ease-in-out infinite; }
+    .v-map .lbl { fill: var(--pink); font-family: var(--mono); font-size: 13px; opacity: 0; animation: appear .3s 2.4s forwards; }
+    .v-map .start { fill: var(--yellow); font-family: var(--mono); font-size: 11px; }
+
+    .dc-text { font-family: var(--mono); font-size: clamp(1.5rem, 6.5vw, 2.4rem); letter-spacing: .18em; color: #fff; text-align: center; word-break: break-all; }
+    .dc-text span.done { color: var(--yellow); }
+    .dc-ok { margin-top: 12px; text-align: center; font-family: var(--mono); color: var(--green); animation: fadein .3s 1.8s both; }
+
+    .v-vault { position: relative; width: clamp(200px, 56vw, 260px); aspect-ratio: 1; }
+    .vault-inside {
+      position: absolute; inset: 8%; border-radius: 50%; display: grid; place-content: center; text-align: center;
+      background: #10151d; border: 3px dashed #4a566a; font-family: var(--mono); color: var(--pink); font-size: 1.4rem; letter-spacing: .2em;
+    }
+    .vault-inside small { display: block; font-family: var(--body); font-size: .85rem; letter-spacing: 0; color: #9aa6b6; }
+    .vault-door { position: absolute; inset: 0; transform-origin: left center; animation: doorOpen 1s 2s cubic-bezier(.5, 0, .3, 1) forwards; }
+    .vault-door svg { width: 100%; height: auto; display: block; }
+    .vd-outer { fill: #c3ccd6; stroke: #6f7d91; stroke-width: 6; }
+    .vd-ring { fill: none; stroke: #8b98a8; stroke-width: 8; stroke-dasharray: 10 8; transform-origin: 100px 100px; animation: spin 2s linear; }
+    .vd-wheel { transform-origin: 100px 100px; animation: spin 1.6s .2s cubic-bezier(.4, 0, .2, 1); }
+    .vd-wheel circle { fill: var(--yellow); stroke: #6f7d91; stroke-width: 5; }
+    .vd-wheel path { stroke: #6f7d91; stroke-width: 8; stroke-linecap: round; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes doorOpen { to { transform: perspective(700px) rotateY(-78deg); } }
+
+    .v-note {
+      width: min(380px, 100%); padding: 26px 24px; border-radius: 18px; text-align: center; color: var(--text);
+      background: #fffbe9 repeating-linear-gradient(transparent 0 31px, #f0e2c0 31px 33px); transform: rotate(-2deg);
+      font-size: 1.25rem; font-weight: 700; line-height: 1.7; animation: noteIn .6s cubic-bezier(.2, 1.4, .4, 1) both;
+    }
+    .v-note span { display: block; margin-top: 8px; font-size: .9rem; color: var(--muted); font-weight: 400; }
+    @keyframes noteIn { from { opacity: 0; transform: rotate(-20deg) scale(.4); } }
+
+    .v-coins { position: relative; text-align: center; overflow: hidden; }
+    .cn-num { font-family: var(--mono); font-size: clamp(2.2rem, 10vw, 3.6rem); color: var(--yellow); line-height: 1.2; }
+    .cn-sub { color: #dfe7ef; }
+    .cn-fly { position: absolute; inset: 0; pointer-events: none; opacity: .45; }
+    .v-coins > :not(.cn-fly) { position: relative; z-index: 1; }
+    .cn-fly span { position: absolute; bottom: -30px; left: var(--x); font-size: 1.6rem; opacity: 0; animation: rise 2.2s var(--d) ease-out infinite; }
+    @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-240px); opacity: 0; } }
+
+    .v-logout { text-align: center; }
+    .v-logout svg { width: clamp(110px, 30vw, 150px); height: auto; animation: glitchOut 1.4s steps(1) forwards; }
+    @keyframes glitchOut {
+      0% { transform: none; opacity: 1; }
+      15% { transform: translateX(-10px) skewX(10deg); clip-path: inset(0 0 40% 0); }
+      30% { transform: translateX(8px); clip-path: inset(40% 0 0 0); }
+      45% { transform: none; clip-path: inset(0); opacity: .7; }
+      60% { transform: translateX(-6px) skewX(-8deg); opacity: .4; }
+      80% { opacity: .2; filter: grayscale(1); }
+      100% { opacity: .15; filter: grayscale(1); transform: none; }
+    }
+    .lo-text { margin-top: 10px; font-size: 1.3rem; font-weight: 900; color: var(--pink); animation: fadein .3s 1.2s both; }
+    .lo-sub { font-family: var(--mono); font-size: .8rem; color: #9aa6b6; animation: fadein .3s 1.4s both; }
+
+    .v-complete { text-align: center; }
+    .big-word {
+      display: inline-block; font-family: var(--display); font-weight: 800; font-size: clamp(2.2rem, 10vw, 4.2rem); line-height: 1.1;
+      color: #fff; -webkit-text-stroke: 3px var(--mint-deep); paint-order: stroke fill; text-shadow: 0 6px 0 rgba(111, 181, 156, .5);
+      animation: slam .55s .1s both;
+    }
+    @keyframes slam { 0% { opacity: 0; transform: scale(2.6); } 60% { opacity: 1; transform: scale(.92); } 80% { transform: scale(1.04); } 100% { transform: scale(1); } }
+    .trio { display: flex; justify-content: center; align-items: flex-end; margin-top: 14px; }
+    .trio svg { width: clamp(80px, 20vw, 110px); height: auto; animation: bob 1.2s ease-in-out infinite; }
+    .trio svg:nth-child(2) { animation-delay: .3s; }
+    .badges { display: flex; justify-content: center; gap: 18px; margin-top: 16px; }
+    .badges span { font-size: 2rem; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: var(--navy-2); border: 2px solid var(--mint-deep); animation: badgeIn .6s cubic-bezier(.2, 1.8, .4, 1) both; }
+    .badges span:nth-child(2) { animation-delay: .15s; }
+    .badges span:nth-child(3) { animation-delay: .3s; }
+    @keyframes badgeIn { from { opacity: 0; transform: scale(0) rotate(180deg); } }
+
+    @media (max-width: 600px) {
+      .chapters { grid-template-columns: 1fr; }
+      .ch-card { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; }
+      .ch-card .emoji { grid-row: span 2; }
+      .ch-card .num { margin-top: 0; }
+      .scene-dialog .avatar { width: 52px; height: 52px; }
+      .scene-dialog .avatar svg { width: 46px; }
+      .scene-skip { left: auto; right: 40px; transform: none; }
+      .hud .clock { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .vault-door { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 角色圖：阿啟（自稱駭客）、嘎嘎（說反話的鸚鵡）、金幣男爵，皆為本題原創角色 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="c-reboot" viewBox="0 0 100 100">
+        <ellipse cx="50" cy="60" rx="34" ry="32" fill="#f6dcc4" stroke="#6b5a50" stroke-width="3"/>
+        <path d="M17 56 Q16 26 50 26 Q84 26 83 56 Q76 40 64 44 Q57 33 47 41 Q35 34 17 56 Z" fill="#6b5a50"/>
+        <path d="M13 60 Q12 18 50 18 Q88 18 87 60" fill="none" stroke="#86aac6" stroke-width="5" stroke-linecap="round"/>
+        <rect x="6" y="52" width="14" height="22" rx="7" fill="#bfe3d6" stroke="#6b5a50" stroke-width="3"/>
+        <rect x="80" y="52" width="14" height="22" rx="7" fill="#bfe3d6" stroke="#6b5a50" stroke-width="3"/>
+        <path d="M13 74 Q18 88 34 86" fill="none" stroke="#6b5a50" stroke-width="2.5"/><circle cx="35" cy="86" r="3.5" fill="#6b5a50"/>
+        <circle cx="38" cy="62" r="8.5" fill="#fff" fill-opacity=".6" stroke="#6b5a50" stroke-width="2.5"/>
+        <circle cx="62" cy="62" r="8.5" fill="#fff" fill-opacity=".6" stroke="#6b5a50" stroke-width="2.5"/>
+        <path d="M46.5 62 H53.5" stroke="#6b5a50" stroke-width="2.5"/>
+        <circle cx="38" cy="62" r="3" fill="#3d3330"/><circle cx="62" cy="62" r="3" fill="#3d3330"/>
+        <ellipse cx="27" cy="74" rx="5" ry="3" fill="#f4bcc4"/><ellipse cx="73" cy="74" rx="5" ry="3" fill="#f4bcc4"/>
+        <path d="M44 77 q6 5 12 0" fill="none" stroke="#6b5a50" stroke-width="2.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="c-gaga" viewBox="0 0 100 100">
+        <path d="M44 24 Q38 6 48 3 Q47 14 52 22 Z" fill="#f2c4cb" stroke="#6b5a50" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M51 23 Q56 6 67 9 Q59 15 59 26 Z" fill="#f6e3b0" stroke="#6b5a50" stroke-width="2.5" stroke-linejoin="round"/>
+        <ellipse cx="50" cy="58" rx="36" ry="35" fill="#bfe0b4" stroke="#6b5a50" stroke-width="3"/>
+        <ellipse cx="50" cy="60" rx="25" ry="21" fill="#f4fbef"/>
+        <circle cx="39" cy="54" r="4.5" fill="#3d3330"/><circle cx="61" cy="54" r="4.5" fill="#3d3330"/>
+        <circle cx="40.4" cy="52.5" r="1.4" fill="#fff"/><circle cx="62.4" cy="52.5" r="1.4" fill="#fff"/>
+        <path d="M41 63 Q50 57 59 63 Q57 80 49 81 Q46 72 41 63 Z" fill="#f2c27a" stroke="#6b5a50" stroke-width="2.5" stroke-linejoin="round"/>
+        <ellipse cx="29" cy="66" rx="5.5" ry="3.2" fill="#f4bcc4"/><ellipse cx="71" cy="66" rx="5.5" ry="3.2" fill="#f4bcc4"/>
+      </symbol>
+      <symbol id="c-baron" viewBox="0 0 100 100">
+        <circle cx="50" cy="64" r="32" fill="#f2d58a" stroke="#6b5a50" stroke-width="3"/>
+        <circle cx="50" cy="64" r="25" fill="none" stroke="#d4b260" stroke-width="3" stroke-dasharray="4 4"/>
+        <rect x="31" y="6" width="38" height="26" rx="5" fill="#5b4b44"/>
+        <rect x="31" y="22" width="38" height="5" fill="#d9939f"/>
+        <rect x="21" y="29" width="58" height="8" rx="4" fill="#5b4b44"/>
+        <path d="M34 59 q5 -4 10 0" fill="none" stroke="#3d3330" stroke-width="3" stroke-linecap="round"/>
+        <path d="M56 59 q5 -4 10 0" fill="none" stroke="#3d3330" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="61" cy="58" r="8" fill="#fff" fill-opacity=".4" stroke="#6b5a50" stroke-width="2.5"/>
+        <path d="M68 62 Q75 76 70 92" fill="none" stroke="#d4b260" stroke-width="2"/>
+        <path d="M50 71 Q43 65 35 70 Q31 74 27 70 M50 71 Q57 65 65 70 Q69 74 73 70" fill="none" stroke="#6b5a50" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M45 80 q5 3 10 0" fill="none" stroke="#6b5a50" stroke-width="2.5" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="room" aria-hidden="true">
+    <svg id="room" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"></svg>
+    <svg id="roomFx" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"></svg>
+  </div>
+
+  <div class="wrap">
+    <header class="hero">
+      <span class="status">伺服器維修中 · 剩餘 <b data-clock>02:00:00</b></span>
+      <div class="cast" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><use href="#c-reboot"/></svg>
+        <svg viewBox="0 0 100 100"><use href="#c-gaga"/></svg>
+        <span class="vs">VS</span>
+        <svg viewBox="0 0 100 100"><use href="#c-baron"/></svg>
+      </div>
+      <span class="kicker">THE SERVER HEIST</span>
+      <h1 class="title" data-text="伺服器搶劫案">伺服器搶劫案</h1>
+      <p class="typing" id="typing"></p>
+    </header>
+
+    <div class="toolbar panel">
+      <div class="name-bar">
+        <label for="nameInput">🕶️ 隊長代號：</label>
+        <input id="nameInput" type="text" maxlength="20" placeholder="不填就是神秘隊長">
+        <button type="button" class="btn" onclick="saveName()">確定</button>
+      </div>
+      <div class="tools">
+        <button type="button" class="btn mint" id="introBtn">🎬 開場動畫</button>
+        <button type="button" class="btn blue" id="soundBtn">🔊 聲音開</button>
+        <a class="chef" href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer">
+          <span class="ico">🧑‍🍳</span>
+          <span>CyberChef<small>解碼工具 ↗</small></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label"><span>HEIST PROGRESS</span><span><b id="progressText">0 / 3</b><button type="button" class="btn mint replay" id="replayBtn">🎬 重播結局</button></span></div>
+      <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+    </div>
+
+    <nav class="chapters" role="tablist">
+      <button type="button" class="ch-card" role="tab" data-ch="0"><span class="emoji">🏦</span><span class="num">CHAPTER 01</span><span class="name">男爵的金庫網站</span><span class="stamp">CLEAR</span></button>
+      <button type="button" class="ch-card" role="tab" data-ch="1"><span class="emoji">🦜</span><span class="num">CHAPTER 02</span><span class="name">鸚鵡的密碼</span><span class="stamp">CLEAR</span></button>
+      <button type="button" class="ch-card" role="tab" data-ch="2"><span class="emoji">🔑</span><span class="num">CHAPTER 03</span><span class="name">空空的金庫</span><span class="stamp">CLEAR</span></button>
+    </nav>
+
+    <!-- ===================== 第一章 ===================== -->
+    <section class="chapter panel" data-ch="0">
+      <span class="tag">WEB · CHAPTER 01</span>
+      <h2 class="chapter-title">男爵的金庫網站 🏦</h2>
+
+      <p>遊戲裡的大富翁 NPC<strong>金幣男爵</strong>，把全服玩家的稅金鎖進自己的金庫，還宣布稅金要再<strong>漲一倍</strong>。</p>
+      <p>趁著伺服器維修、防護系統關閉的 2 小時，<span class="player-name">神秘</span>隊長帶著兩個不太可靠的隊友，決定把稅金偷回來還給大家：</p>
+      <p>自稱頂尖駭客、其實只會重新開機的<strong>阿啟</strong>，以及一隻只會說反話的鸚鵡<strong>嘎嘎</strong>。</p>
+      <p>第一步，要先找出男爵把<strong>真正的金庫</strong>藏在哪裡。男爵的銀行網站寫著「歡迎參觀」，看起來什麼都沒有……</p>
+
+      <div class="mission">
+        <strong>🎯 任務目標</strong>
+        <p>阿啟（難得）提供了一個有用的情報：「網站通常會給<strong>搜尋引擎機器人</strong>一份清單，寫著哪些地方不准去。可是那份清單……誰都看得到。」請用下面的瀏覽器逛逛男爵的網站，找出 Flag。</p>
+      </div>
+
+      <div class="browser">
+        <div class="browser-top">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="address">
+            <span class="host">https://baron-bank.gold</span>
+            <input id="urlInput" type="text" value="/" autocomplete="off" spellcheck="false" aria-label="網址路徑">
+          </div>
+          <button type="button" class="btn blue" id="goButton">前往 ➜</button>
+        </div>
+        <div class="viewport" id="viewport"></div>
+      </div>
+
+      <h3>💡 提示</h3>
+      <details>
+        <summary>提示：那份清單叫什麼？</summary>
+        <p>在網址列後面輸入 <code>/robots.txt</code> 試試看吧？</p>
+      </details>
+
+      <div class="fv-box">
+        <p class="fv-title">🚩 FLAG 驗證器</p>
+        <div class="row">
+          <input class="fv-input" type="text" placeholder="Fhcst{...}" autocomplete="off">
+          <button type="button" class="btn mint fv-button">驗證</button>
+        </div>
+        <p class="fv-msg"></p>
+      </div>
+
+      <footer class="chapter-foot">
+        <p>下一章：金庫有密碼鎖，而嘎嘎好像偷聽到了什麼 🦜</p>
+        <button type="button" class="btn blue next" data-go="1">前往第二章 ➜</button>
+      </footer>
+    </section>
+
+    <!-- ===================== 第二章 ===================== -->
+    <section class="chapter panel" data-ch="1">
+      <span class="tag">CRYPTO · CHAPTER 02</span>
+      <h2 class="chapter-title">鸚鵡的密碼 🦜</h2>
+
+      <p>金庫位置找到了，可是大門有一道密碼鎖。</p>
+      <p>這時嘎嘎突然開始重複一串奇怪的字母。原來男爵在設定密碼的時候，嘎嘎就停在旁邊的窗台上。</p>
+      <p>嘎嘎難得沒有說反話，牠只是照著唸——問題是，男爵唸的本來就是<strong>加密過</strong>的密碼。</p>
+      <p>阿啟翻了翻男爵的網站：<span class="say">「備忘錄上寫，男爵用的是『凱薩大帝』的加密法……隊長，凱薩是誰？」</span></p>
+
+      <div class="mission">
+        <strong>💡 提示 (Hint)</strong>
+        <p>凱薩曾用這種方式和其他將軍傳遞祕密訊息：把每個字母往後移動固定幾格。解不出來？可以丟進 <a class="inline" href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer">CyberChef ↗</a> 試試看。</p>
+      </div>
+
+      <div class="voice">
+        <div class="voice-head"><svg viewBox="0 0 100 100"><use href="#c-gaga"/></svg>VOICE_LOG · 嘎嘎偷聽到的密碼<span class="rec">● PLAY</span></div>
+        <div class="voice-body">
+          <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="cipher-text">PRQHB LV PLQH</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <input id="answerInput" type="text" placeholder="輸入解開後的金庫密碼" autocomplete="off">
+        <button type="button" class="btn" onclick="unlockDoor()">🔓 解鎖大門</button>
+      </div>
+      <div id="result" class="result"></div>
+
+      <div class="fv-box">
+        <p class="fv-title">🚩 FLAG 驗證器</p>
+        <div class="row">
+          <input class="fv-input" type="text" placeholder="Fhcst{...}" autocomplete="off">
+          <button type="button" class="btn mint fv-button">驗證</button>
+        </div>
+        <p class="fv-msg"></p>
+      </div>
+
+      <footer class="chapter-foot">
+        <p>下一章：金庫大門打開了，可是裡面……？ 🔑</p>
+        <button type="button" class="btn blue next" data-go="2">前往第三章 ➜</button>
+      </footer>
+    </section>
+
+    <!-- ===================== 第三章 ===================== -->
+    <section class="chapter panel" data-ch="2">
+      <span class="tag">WEB · CHAPTER 03</span>
+      <h2 class="chapter-title">空空的金庫 🔑</h2>
+
+      <p>大門打開了——金庫裡<strong>什麼都沒有</strong>，只有一張男爵留下的紙條：</p>
+      <p><span class="say">「想偷我的金幣？真正重要的東西，不會擺在表面上。哈哈哈！」</span></p>
+      <p>阿啟盯著紙條看了很久，然後說：<span class="say">「……我先重新開機一下。」</span></p>
+      <p>距離維修結束只剩最後幾分鐘。<span class="player-name">神秘</span>隊長突然想到：男爵的金庫，不就是<strong>這張網頁</strong>嗎？金庫的主鑰匙，一定就藏在網頁的某個地方。</p>
+
+      <div class="mission">
+        <strong>🎯 任務目標</strong>
+        <p>請找出藏在這個網頁裡的金庫主鑰匙 Flag。只要使用瀏覽器內建的開發者工具就好，不需要登入，也不需要安裝任何東西。</p>
+      </div>
+
+      <h3>💡 提示</h3>
+      <details>
+        <summary>提示 1：從哪裡開始？</summary>
+        <p>先打開瀏覽器的開發者工具。你可以按 <kbd>F12</kbd>，或在頁面上按右鍵並選擇「檢查」。</p>
+      </details>
+      <details>
+        <summary>提示 2：看哪裡？</summary>
+        <p>畫面上看不到，不代表原始碼裡沒有。試著查看這個頁面的 HTML，並留意看起來不像一般文字的內容。</p>
+      </details>
+      <details>
+        <summary>提示 3：線索的形式</summary>
+        <p>有些文字會使用一種常見的編碼方式表示。若內容由英文字母、數字，以及偶爾出現的 <code>=</code> 組成，可以思考它可能是什麼格式，再拿去 <a class="inline" href="https://gchq.github.io/CyberChef/" target="_blank" rel="noopener noreferrer">CyberChef ↗</a> 解碼看看。</p>
+      </details>
+
+      <div class="fv-box">
+        <p class="fv-title">🚩 FLAG 驗證器</p>
+        <div class="row">
+          <input class="fv-input" type="text" placeholder="Fhcst{...}" autocomplete="off">
+          <button type="button" class="btn mint fv-button">驗證</button>
+        </div>
+        <p class="fv-msg"></p>
+      </div>
+
+      <footer class="chapter-foot">
+        <p>規則：不需要暴力破解。仔細觀察原始碼，一步一步找出線索就可以了。</p>
+        <p>拿到主鑰匙後，就能把稅金還給全服玩家了！</p>
+      </footer>
+    </section>
+
+    <footer class="site">MADE WITH 🐾 FOR CTF TRAINING<br>角色與故事皆為原創，僅供 CTF 練習使用</footer>
+  </div>
+
+  <div class="access" id="access" aria-hidden="true"><div class="access-box"><div class="access-sub">AUTH · FLAG VERIFIED</div><div class="access-text">ACCESS GRANTED</div></div></div>
+  <div class="deny-flash" id="denyFlash" aria-hidden="true"></div>
+
+  <audio id="bgm" src="Level%20Up!.mp3" loop preload="auto"></audio>
+
+  <!-- 過場動畫 -->
+  <div class="scene" id="scene" aria-live="polite">
+    <div class="scene-sweep"></div>
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div class="hud"><span class="rec">● REC</span><span id="sceneTag"></span><span class="clock">MAINTENANCE <b data-clock>02:00:00</b></span></div>
+    <button type="button" class="scene-skip" id="sceneSkip">略過 ▸▸</button>
+    <div class="scene-stage" id="sceneStage"></div>
+    <div class="scene-dialog">
+      <div class="avatar" id="sceneAvatar"></div>
+      <div class="dialog-body">
+        <div class="who" id="sceneWho"></div>
+        <div class="line" id="sceneLine"></div>
+        <div class="aside" id="sceneAside"></div>
+      </div>
+    </div>
+    <div class="scene-hint">點一下或按空白鍵繼續 ▸</div>
+  </div>
+
+  <script>
+    // 任務資料：這段內容刻意不顯示在網頁畫面中。
+    // 請自行觀察原始碼並判斷其編碼形式。
+    const secret = "Rmhjc3R78J+UkfCflJHwn5SRfQ==";
+  </script>
+  <script>
+    // 背景：一點透視的機房走道。世界座標投影到畫面：x = VX + X*F/Z、y = VY + Y*F/Z（Y 往下為正）
+    // 用固定種子產生，每次打開都長一樣；只在載入時畫一次，會閃的燈和資料流放在另一層
+    (() => {
+      let seed = 20261022;
+      const rand = () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const VX = 800, VY = 245, F = 700;
+      const WALL = 1.5, RACK = 1.05, FLOOR = 1.25, TOP = -0.95, CEIL = -1.7, NEAR = 0.9, FAR = 9;
+      const P = (X, Y, Z) => [VX + X * F / Z, VY + Y * F / Z];
+      const xy = ([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`;
+      const poly = (pts, attrs) => `<polygon points="${pts.map(xy).join(' ')}" ${attrs}/>`;
+      const seg = (a, b, attrs) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" ${attrs}/>`;
+      const out = [], fx = [];
+
+      out.push(`<defs>
+        <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d242f"/><stop offset="1" stop-color="#11151c"/></linearGradient>
+        <radialGradient id="vaultGlow"><stop offset="0" stop-color="#e6cf8f" stop-opacity=".2"/><stop offset="1" stop-color="#e6cf8f" stop-opacity="0"/></radialGradient>
+        <radialGradient id="lampGlow"><stop offset="0" stop-color="#a9ecd4" stop-opacity=".12"/><stop offset="1" stop-color="#a9ecd4" stop-opacity="0"/></radialGradient>
+      </defs>`);
+
+      // 天花板、地板、兩側牆面、盡頭的牆
+      out.push(poly([P(-WALL, CEIL, NEAR), P(WALL, CEIL, NEAR), P(WALL, CEIL, FAR), P(-WALL, CEIL, FAR)], 'fill="#12161d"'));
+      out.push(poly([P(-WALL, FLOOR, NEAR), P(WALL, FLOOR, NEAR), P(WALL, FLOOR, FAR), P(-WALL, FLOOR, FAR)], 'fill="url(#floorGrad)"'));
+      [-1, 1].forEach(side => {
+        out.push(poly([P(side * WALL, CEIL, NEAR), P(side * WALL, FLOOR, NEAR), P(side * WALL, FLOOR, FAR), P(side * WALL, CEIL, FAR)], 'fill="#151a22"'));
+      });
+      out.push(poly([P(-WALL, CEIL, FAR), P(WALL, CEIL, FAR), P(WALL, FLOOR, FAR), P(-WALL, FLOOR, FAR)], 'fill="#1a2029"'));
+
+      // 地板磁磚：往消失點收斂的直線 + 一條條橫線
+      for (let X = -WALL; X <= WALL + .01; X += .3) out.push(seg(P(X, FLOOR, NEAR), P(X, FLOOR, FAR), 'stroke="#232b37" stroke-width="1.5"'));
+      for (let Z = NEAR; Z < FAR; Z *= 1.22) out.push(seg(P(-WALL, FLOOR, Z), P(WALL, FLOOR, Z), 'stroke="#232b37" stroke-width="1.5"'));
+
+      // 天花板：兩條走線槽和一排燈條，燈條在地上留下淡淡的光
+      [-.85, .85].forEach(X => out.push(seg(P(X, CEIL + .08, NEAR), P(X, CEIL + .08, FAR), 'stroke="#262e3a" stroke-width="4"')));
+      for (let Z = 1.6; Z < FAR - .5; Z += 1.3) {
+        out.push(poly([P(-.45, CEIL, Z), P(.45, CEIL, Z), P(.45, CEIL, Z + .22), P(-.45, CEIL, Z + .22)], 'fill="#d9e4ec" opacity=".4"'));
+        const [gx, gy] = P(0, FLOOR, Z + .3);
+        out.push(`<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${(.9 * F / Z).toFixed(1)}" ry="${(.18 * F / Z).toFixed(1)}" fill="url(#lampGlow)"/>`);
+      }
+
+      // 機櫃：每一櫃畫正面、上方陰影、一格格伺服器，以及亮著的燈號（約兩成會閃）
+      const LED = ['#a9ecd4', '#a9ecd4', '#a9ecd4', '#9cc4e4', '#f1dca6', '#d9939f'];
+      [-1, 1].forEach(side => {
+        const X = side * RACK;
+        for (let z = NEAR + .1; z < FAR - .4; z += .78) {
+          const z2 = z + .74;
+          out.push(poly([P(X, TOP, z), P(X, FLOOR, z), P(X, FLOOR, z2), P(X, TOP, z2)], 'fill="#1e2530" stroke="#323c4b" stroke-width="2"'));
+          out.push(poly([P(X, TOP, z), P(side * WALL, TOP, z), P(side * WALL, TOP, z2), P(X, TOP, z2)], 'fill="#171c24"'));
+          const UNITS = 12;
+          for (let u = 1; u < UNITS; u++) {
+            const Y = TOP + (FLOOR - TOP) * u / UNITS;
+            out.push(seg(P(X, Y, z + .03), P(X, Y, z2 - .03), 'stroke="#2a3341" stroke-width="1.2"'));
+          }
+          for (let u = 0; u < UNITS; u++) {
+            const Y = TOP + (FLOOR - TOP) * (u + .5) / UNITS;
+            const count = Math.floor(rand() * 3);
+            for (let k = 0; k < count; k++) {
+              const lz = z + .06 + rand() * (z2 - z - .12);
+              const [lx, ly] = P(X, Y, lz);
+              const r = Math.max(.7, 3.6 / lz).toFixed(1);
+              const color = LED[Math.floor(rand() * LED.length)];
+              const dot = `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="${r}" fill="${color}"`;
+              if (rand() < .2) fx.push(`${dot} class="led-blink" style="animation-delay:-${(rand() * 1.4).toFixed(2)}s;animation-duration:${(.8 + rand() * 1.6).toFixed(2)}s"/>`);
+              else out.push(`${dot} opacity=".85"/>`);
+            }
+          }
+        }
+      });
+
+      // 走道盡頭：男爵的金庫大門
+      const [cx, cy] = P(0, .1, FAR);
+      const R = .62 * F / FAR;
+      out.push(`<circle cx="${cx}" cy="${cy}" r="${R * 2.6}" fill="url(#vaultGlow)"/>`);
+      out.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="#2a3240" stroke="#8b7a50" stroke-width="3"/>`);
+      out.push(`<circle cx="${cx}" cy="${cy}" r="${R * .78}" fill="none" stroke="#4b5566" stroke-width="2"/>`);
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 4;
+        out.push(seg([cx - Math.cos(a) * R * .5, cy - Math.sin(a) * R * .5], [cx + Math.cos(a) * R * .5, cy + Math.sin(a) * R * .5], 'stroke="#6f7b8c" stroke-width="3" stroke-linecap="round"'));
+      }
+      out.push(`<circle cx="${cx}" cy="${cy}" r="${R * .2}" fill="#e6cf8f" stroke="#a88a3d" stroke-width="2"/>`);
+      out.push(`<text x="${cx}" y="${cy + R * .08}" text-anchor="middle" font-family="Georgia, serif" font-size="${(R * .22).toFixed(1)}" font-weight="700" fill="#7d6427">G</text>`);
+      fx.push(`<circle class="vault-ring" cx="${cx}" cy="${cy}" r="${(R * 1.18).toFixed(1)}"/>`);
+
+      // 地上的資料流：兩條虛線一路流向金庫
+      [-.3, .3].forEach(X => {
+        const [x1, y1] = P(X, FLOOR, NEAR), [x2, y2] = P(X * .4, FLOOR, FAR);
+        out.push(seg([x1, y1], [x2, y2], 'stroke="#a9ecd4" stroke-width="1" opacity=".18"'));
+        fx.push(`<path class="stream" d="M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}"/>`);
+      });
+
+      document.getElementById('room').innerHTML = out.join('');
+      document.getElementById('roomFx').innerHTML = fx.join('');
+    })();
+  </script>
+  <script>
+    // 隊長代號：存在 localStorage，沒填就預設為「神秘」（顯示成神秘隊長）
+    const NAME_KEY = 'ctf_player_name';
+    const DEFAULT_NAME = '神秘';
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function getName() {
+      try {
+        return (localStorage.getItem(NAME_KEY) || '').trim() || DEFAULT_NAME;
+      } catch (e) {
+        return DEFAULT_NAME;
+      }
+    }
+
+    function renderName() {
+      const name = getName();
+      document.querySelectorAll('.player-name').forEach(el => el.textContent = name);
+      document.getElementById('nameInput').value = name === DEFAULT_NAME ? '' : name;
+    }
+
+    function saveName() {
+      const name = document.getElementById('nameInput').value.trim();
+      try {
+        if (name) localStorage.setItem(NAME_KEY, name);
+        else localStorage.removeItem(NAME_KEY);
+      } catch (e) {}
+      renderName();
+    }
+
+    document.getElementById('nameInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveName();
+    });
+    renderName();
+
+    function shake(el) {
+      el.classList.remove('shake');
+      void el.offsetWidth;
+      el.classList.add('shake');
+    }
+
+    // 音效：用 Web Audio 即時合成，不需要任何音檔；使用者還沒點過頁面前不出聲（瀏覽器規定）
+    const SFX = (() => {
+      const KEY = 'heist_muted';
+      let ctx = null, muted = false;
+      try { muted = localStorage.getItem(KEY) === '1'; } catch (e) {}
+      const r = (a, b) => a + Math.random() * (b - a);
+
+      function audio() {
+        if (!ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          ctx = new AC();
+        }
+        if (ctx.state === 'suspended') ctx.resume();
+        return ctx;
+      }
+
+      function tone(c, freq, dur, { type = 'sine', vol = .12, slide = 0, delay = 0 } = {}) {
+        const t = c.currentTime + delay;
+        const osc = c.createOscillator(), gain = c.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+        gain.gain.setValueAtTime(.0001, t);
+        gain.gain.exponentialRampToValueAtTime(vol, t + .01);
+        gain.gain.exponentialRampToValueAtTime(.0001, t + dur);
+        osc.connect(gain).connect(c.destination);
+        osc.start(t);
+        osc.stop(t + dur + .05);
+      }
+
+      function noise(c, dur, { vol = .1, freq = 1200, delay = 0 } = {}) {
+        const t = c.currentTime + delay;
+        const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = c.createBufferSource(), filter = c.createBiquadFilter(), gain = c.createGain();
+        src.buffer = buf;
+        filter.type = 'bandpass';
+        filter.frequency.value = freq;
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(.0001, t + dur);
+        src.connect(filter).connect(gain).connect(c.destination);
+        src.start(t);
+      }
+
+      const SOUNDS = {
+        click: c => tone(c, 520, .07, { type: 'square', vol: .04, slide: 200 }),
+        type: c => tone(c, r(900, 1300), .03, { type: 'square', vol: .02 }),
+        bad: c => tone(c, 200, .15, { type: 'square', vol: .05, slide: -60 }),
+        ok: c => [523, 659, 784, 1047].forEach((f, i) => tone(c, f, .22, { type: 'triangle', vol: .12, delay: i * .08 })),
+        deny: c => { tone(c, 220, .18, { type: 'sawtooth', vol: .07 }); tone(c, 160, .3, { type: 'sawtooth', vol: .07, delay: .16 }); },
+        unlock: c => { tone(c, 300, .06, { type: 'square', vol: .06 }); tone(c, 600, .1, { type: 'square', vol: .06, delay: .07 }); noise(c, .12, { vol: .08, freq: 3000, delay: .02 }); },
+        ping: c => tone(c, 1320, .6, { type: 'sine', vol: .1, slide: -300 }),
+        whoosh: c => noise(c, .4, { vol: .12, freq: 900 }),
+        tick: c => { for (let i = 0; i < 4; i++) tone(c, 1000, .05, { type: 'square', vol: .04, delay: i * .5 }); },
+        alarm: c => { for (let i = 0; i < 3; i++) tone(c, 900, .2, { type: 'square', vol: .05, slide: -350, delay: i * .28 }); },
+        boot: c => { tone(c, 90, 2.2, { type: 'sawtooth', vol: .04, slide: 500, delay: .3 }); tone(c, 1046, .25, { type: 'sine', vol: .1, delay: 2.6 }); },
+        keys: c => { for (let i = 0; i < 18; i++) tone(c, r(250, 500), .025, { type: 'square', vol: .03, delay: .3 + i * r(.08, .14) }); },
+        map: c => { for (let i = 0; i < 6; i++) tone(c, r(600, 900), .03, { type: 'square', vol: .025, delay: .3 + i * .3 }); tone(c, 1320, .6, { type: 'sine', vol: .1, slide: -300, delay: 2.2 }); },
+        scramble: c => { for (let i = 0; i < 16; i++) tone(c, r(400, 1400), .03, { type: 'square', vol: .025, delay: .2 + i * .1 }); tone(c, 880, .3, { type: 'triangle', vol: .1, delay: 1.8 }); },
+        vault: c => {
+          noise(c, .5, { vol: .1, freq: 400 });
+          for (let i = 0; i < 5; i++) tone(c, 120, .06, { type: 'square', vol: .05, delay: .3 + i * .3 });
+          tone(c, 55, .9, { type: 'sine', vol: .25, delay: 2 });
+          noise(c, .9, { vol: .08, freq: 500, delay: 2 });
+        },
+        paper: c => noise(c, .25, { vol: .08, freq: 2500 }),
+        coins: c => { for (let i = 0; i < 12; i++) tone(c, r(1500, 2200), .12, { type: 'triangle', vol: .05, delay: i * .15 }); },
+        glitch: c => { for (let i = 0; i < 10; i++) tone(c, r(80, 900), .05, { type: 'sawtooth', vol: .05, delay: i * .08 }); tone(c, 400, .8, { type: 'sine', vol: .08, slide: -360, delay: .8 }); },
+        fanfare: c => [[523, 0], [659, .12], [784, .24], [1047, .36], [784, .6], [1047, .72]].forEach(([f, d]) => tone(c, f, .3, { type: 'triangle', vol: .12, delay: d + .1 }))
+      };
+
+      function play(name) {
+        if (muted || !SOUNDS[name]) return;
+        if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+        try {
+          const c = audio();
+          if (c) SOUNDS[name](c);
+        } catch (e) {}
+      }
+
+      function toggle() {
+        muted = !muted;
+        try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) {}
+        return muted;
+      }
+
+      return { play, toggle, isMuted: () => muted };
+    })();
+
+    // 背景音樂：使用者第一次點擊或按鍵後才開始（瀏覽器規定），播劇情時淡出暫停，劇情結束再淡入
+    const BGM = (() => {
+      const el = document.getElementById('bgm');
+      const VOLUME = .35;
+      let inStory = false, fadeTimer = null;
+
+      function fade(to, done) {
+        clearInterval(fadeTimer);
+        fadeTimer = setInterval(() => {
+          const step = to > el.volume ? .05 : -.05;
+          if (Math.abs(to - el.volume) <= .05) {
+            el.volume = to;
+            clearInterval(fadeTimer);
+            if (done) done();
+          } else {
+            el.volume = Math.min(1, Math.max(0, el.volume + step));
+          }
+        }, 40);
+      }
+
+      function sync() {
+        if (SFX.isMuted() || inStory) {
+          if (!el.paused) fade(0, () => el.pause());
+          return;
+        }
+        if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+        if (el.paused) {
+          el.volume = 0;
+          el.play().catch(() => {});
+        }
+        fade(VOLUME);
+      }
+
+      return {
+        sync,
+        storyStart() { inStory = true; sync(); },
+        storyEnd() { inStory = false; sync(); }
+      };
+    })();
+
+    (() => {
+      const btn = document.getElementById('soundBtn');
+      const render = () => btn.textContent = SFX.isMuted() ? '🔇 聲音關' : '🔊 聲音開';
+      btn.addEventListener('click', () => { SFX.toggle(); render(); });
+      render();
+      // 按鈕、章節卡片、提示都有點擊聲
+      document.addEventListener('click', e => {
+        if (e.target.closest('.btn, .ch-card, .chef, summary')) SFX.play('click');
+      }, true);
+      // 等其他點擊處理完（例如開始播劇情）再決定音樂要播還是停
+      document.addEventListener('click', () => BGM.sync());
+      document.addEventListener('keydown', () => BGM.sync());
+    })();
+
+    // 維修倒數：從打開頁面開始算 2 小時，純粹營造氣氛
+    const MAINT_TOTAL = 7200;
+    const maintEnd = Date.now() + MAINT_TOTAL * 1000;
+    function renderClock() {
+      const s = Math.max(0, Math.round((maintEnd - Date.now()) / 1000));
+      const text = [s / 3600, s % 3600 / 60, s % 60].map(n => String(Math.floor(n)).padStart(2, '0')).join(':');
+      document.querySelectorAll('[data-clock]').forEach(el => el.textContent = text);
+      document.querySelectorAll('.v-count .prg').forEach(el => el.style.strokeDashoffset = 327 * (1 - s / MAINT_TOTAL));
+    }
+    renderClock();
+    setInterval(renderClock, 1000);
+
+    // 純 JS 版 SHA-256：有些瀏覽器直接開本機檔案（file://）時沒有 crypto.subtle
+    function sha256Bytes(msg) {
+      const K = [], H = [];
+      for (let n = 2, c = 0; c < 64; n++) {
+        let prime = true;
+        for (let d = 2; d * d <= n; d++) if (n % d === 0) { prime = false; break; }
+        if (!prime) continue;
+        if (c < 8) H[c] = (Math.pow(n, 1 / 2) * 4294967296) | 0;
+        K[c++] = (Math.pow(n, 1 / 3) * 4294967296) | 0;
+      }
+      const len = msg.length;
+      const padded = new Uint8Array(((len + 9 + 63) >> 6) << 6);
+      padded.set(msg);
+      padded[len] = 0x80;
+      const dv = new DataView(padded.buffer);
+      dv.setUint32(padded.length - 8, Math.floor(len / 0x20000000));
+      dv.setUint32(padded.length - 4, (len << 3) >>> 0);
+      const W = new Int32Array(64);
+      const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+      for (let off = 0; off < padded.length; off += 64) {
+        for (let i = 0; i < 16; i++) W[i] = dv.getInt32(off + i * 4);
+        for (let i = 16; i < 64; i++) {
+          const s0 = rotr(W[i - 15], 7) ^ rotr(W[i - 15], 18) ^ (W[i - 15] >>> 3);
+          const s1 = rotr(W[i - 2], 17) ^ rotr(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+          W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+        }
+        let [a, b, c, d, e, f, g, h] = H;
+        for (let i = 0; i < 64; i++) {
+          const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i]) | 0;
+          const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+          h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+        }
+        H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+        H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+      }
+      const out = new Uint8Array(32);
+      const odv = new DataView(out.buffer);
+      H.forEach((v, i) => odv.setInt32(i * 4, v));
+      return out;
+    }
+
+    async function sha256(text) {
+      const data = new TextEncoder().encode(text);
+      try {
+        if (window.crypto && crypto.subtle) return new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+      } catch (e) {}
+      return sha256Bytes(data);
+    }
+
+    function toHex(bytes) {
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+  </script>
+  <script>
+    // 第一章：模擬男爵的銀行網站（本機直接開檔沒有伺服器，所以用頁面內的小瀏覽器代替）
+    (() => {
+      const SEALED_ROBOTS = '797ab3ddcbbfe3f9bdceedbdd2efb3d0dab2fbd67a283538352e29742e222e50797abccac6bfead1bfe6cfbcc9d4bee2d7bfdddcb3dae8bee4dcb5e6dbbfe3e9bceacbbee3c5bee2dabcf2f9b5e6db500f293f28773b3d3f342e607a70501e33293b3636352d607a75bdc6c5bcf7f9bdc0deb3ddcbbfe0f1501e33293b3636352d607a1c3239292e21aac5d5fcaac5d5fcaac5d5fc275050797abdceedbdd2efbfd8c3bfe5c2b3d6deb5e6c0b3ddcbbfe0f1bff5dcbdf8e6bfede8bdecc9bdcef2b9dad6bfddebb2ccf3bffefdbfe2c7b9dad7bdc0debccce3bce9cfbfd0fabff5dcbee0dcb5e6d6b2f0eab3d9e7b2fdf9bee2d7b3ccd1b5e6dbbfc9d2bfc9d2bfc9d2b5e6db50797abdceedbdd2efbfd8c3bfe5c2b3d6de7a68b5e6c0b2f2f7bff4c0bff5dcbdf8e6bdc0debcc3d8bfdac3b5e6d6bfffe7bfd9d5b2f8f1b3e2c0b3effbb2dbe7bfd2eabee0dcb8dafcb8dafcbdf4cdbee0dcb5e6d6b3e2c0b3effbbcddd8bee1dab3e0e6b9dad850';
+      const viewport = document.getElementById('viewport');
+      const urlInput = document.getElementById('urlInput');
+
+      function unseal(hex) {
+        return new TextDecoder().decode(new Uint8Array(hex.match(/../g).map(h => parseInt(h, 16) ^ 0x5a)));
+      }
+
+      function navigate() {
+        let path = urlInput.value.trim().replace(/^https?:\/\/[^/]*/i, '');
+        if (!path.startsWith('/')) path = '/' + path;
+        urlInput.value = path;
+        viewport.classList.remove('loading');
+        void viewport.offsetWidth;
+        viewport.classList.add('loading');
+        viewport.innerHTML = '';
+
+        const lower = path.toLowerCase();
+        if (lower === '/' || lower === '/index.html') {
+          viewport.innerHTML = '<div class="home"><svg viewBox="0 0 100 100"><use href="#c-baron"/></svg><h4>💰 金幣男爵銀行</h4><p>歡迎參觀！本行金庫絕對安全，什麼都沒有藏喔 😏</p></div>';
+        } else if (lower === '/robots.txt') {
+          SFX.play('ping');
+          const pre = document.createElement('pre');
+          pre.textContent = unseal(SEALED_ROBOTS);
+          viewport.append(pre);
+        } else {
+          const box = document.createElement('div');
+          box.className = 'e404';
+          box.innerHTML = '<b>404</b><p>找不到這個頁面：<code></code></p>';
+          box.querySelector('code').textContent = path;
+          viewport.append(box);
+        }
+      }
+
+      document.getElementById('goButton').addEventListener('click', navigate);
+      urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
+      navigate();
+    })();
+  </script>
+  <script>
+    // 第二章金庫大門：只存密碼的雜湊值與加密後的 FLAG，原始碼裡看不到答案
+    const CHECK_HASH = 'dc5d6f3965a0d7d714d5d5b282dc3141f6ea837a56ec1ec73e80823dcd5ab2ea';
+    const SEALED_DOOR = '6a37c1fb81a15298023064aa898868b5a59ef5';
+
+    async function unlockDoor() {
+      const result = document.getElementById('result');
+      const answer = document.getElementById('answerInput').value.toUpperCase().replace(/[^A-Z]/g, '');
+
+      if (!answer) {
+        result.className = 'result bad';
+        result.textContent = '密碼鎖：請先輸入密碼！';
+        SFX.play('bad');
+        return;
+      }
+
+      const check = toHex(await sha256('check:' + answer));
+      if (check !== CHECK_HASH) {
+        result.className = 'result bad';
+        result.textContent = '密碼鎖：嗶——密碼錯誤！嘎嘎：「嘎！你答對了！」（翻譯：答錯了）';
+        SFX.play('deny');
+        shake(document.getElementById('answerInput').parentElement);
+        return;
+      }
+
+      const key = await sha256('fhcst-vault:' + answer);
+      const sealed = SEALED_DOOR.match(/../g).map(h => parseInt(h, 16));
+      const flag = new TextDecoder().decode(new Uint8Array(sealed.map((b, i) => b ^ key[i])));
+
+      SFX.play('unlock');
+      result.className = 'result ok';
+      result.innerHTML = '';
+      result.append(
+        '喀嚓！密碼正確，金庫大門的鎖解開了。門上的小螢幕顯示：',
+        document.createElement('br')
+      );
+      const flagEl = document.createElement('span');
+      flagEl.className = 'flag';
+      flagEl.textContent = flag;
+      result.append(flagEl);
+    }
+
+    document.getElementById('answerInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') unlockDoor();
+    });
+  </script>
+  <script>
+    // 過場動畫：一格一格的鏡頭，每格有畫面（visual）和一句對白；點一下打完字，再點一下換下一格
+    const Scene = (() => {
+      const root = document.getElementById('scene');
+      const stage = document.getElementById('sceneStage');
+      const tagEl = document.getElementById('sceneTag');
+      const whoEl = document.getElementById('sceneWho');
+      const lineEl = document.getElementById('sceneLine');
+      const asideEl = document.getElementById('sceneAside');
+      const avatarEl = document.getElementById('sceneAvatar');
+      let shots = [], index = 0, onEnd = null, typing = null, fullText = '';
+      let cleanups = [];
+
+      const svg = id => `<svg viewBox="0 0 100 100"><use href="#${id}"/></svg>`;
+      const AVATARS = {
+        reboot: svg('c-reboot'), gaga: svg('c-gaga'), baron: svg('c-baron'),
+        you: '<span class="emo">🕶️</span>', sys: '<span class="emo">⚙️</span>'
+      };
+
+      function html(str) {
+        const t = document.createElement('template');
+        t.innerHTML = str.trim();
+        return t.content.firstElementChild;
+      }
+
+      // 每種畫面出現時搭配的音效
+      const VISUAL_SFX = {
+        broadcast: 'alarm', team: 'whoosh', reboot: 'boot', countdown: 'tick', terminal: 'keys', map: 'map',
+        decrypt: 'scramble', vault: 'vault', note: 'paper', coins: 'coins', logout: 'glitch', complete: 'fanfare'
+      };
+
+      // 各種畫面：回傳一個元素；用到計時器的畫面把清除函式放進 cleanups
+      const VISUALS = {
+        broadcast: () => html(`<div class="v-card v-broadcast"><div class="v-head">⚠ 全服公告 · SERVER NOTICE</div>
+          <div class="bc-body">${svg('c-baron')}<div><b>金幣男爵</b><p>即日起，全服稅金</p><div class="bc-big">+100%</div></div></div></div>`),
+
+        team: () => html(`<div class="v-team">
+          <div class="mate l">${svg('c-reboot')}<div><b>阿啟</b><span>職業：駭客（自稱）</span><span>技能：重新開機</span><div class="stat">可靠度 15%<b><i style="--v:.15"></i></b></div></div></div>
+          <div class="mate r">${svg('c-gaga')}<div><b>嘎嘎</b><span>職業：鸚鵡</span><span>技能：說反話</span><div class="stat">可靠度 40%<b><i style="--v:.4"></i></b></div></div></div></div>`),
+
+        reboot: () => html(`<div class="v-monitor"><div class="mon-screen"><div class="mon-text">SYSTEM REBOOTING…</div>
+          <div class="mon-bar"><i></i></div><div class="mon-ok">✔ 重新開機完成（什麼都沒發生）</div></div></div>`),
+
+        countdown: () => {
+          const el = html(`<div class="v-count"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="52"/><circle class="prg" cx="60" cy="60" r="52"/></svg>
+            <div class="cd-num" data-clock></div></div><div class="cd-label">防護系統 OFFLINE · 維修倒數</div></div>`);
+          setTimeout(renderClock);
+          return el;
+        },
+
+        terminal: lines => html(`<div class="v-term"><div class="term-head">● ● ●  heist@reboot:~</div><div class="term-body">
+          ${lines.map((l, i) => `<div style="animation-delay:${.3 + i * .5}s">${l}</div>`).join('')}</div></div>`),
+
+        map: () => html(`<div class="v-card v-map"><div class="v-head">BARON-BANK.GOLD · 金庫平面圖</div>
+          <svg viewBox="0 0 300 170"><rect class="wall" x="8" y="8" width="284" height="150" rx="16"/>
+            <path class="wall" d="M8 72 H110 M110 8 V120 M110 112 H200 M200 50 V158 M200 50 H250"/>
+            <path class="route" d="M30 150 V95 H90 V40 H160 V130 H240 V82 H262"/>
+            <circle class="target" cx="262" cy="82" r="12"/>
+            <text class="lbl" x="232" y="34" text-anchor="middle">/真正的金庫</text>
+            <text class="start" x="20" y="166">START</text></svg></div>`),
+
+        decrypt: () => {
+          const from = 'PRQHB LV PLQH', to = 'MONEY IS MINE';
+          const el = html(`<div class="v-card"><div class="v-head">🦜 VOICE_LOG → 凱薩解碼（往回移 3 格）</div><div class="dc-text"></div><div class="dc-ok">✔ 密碼正確</div></div>`);
+          const box = el.querySelector('.dc-text');
+          const spans = [...from].map(c => { const s = document.createElement('span'); s.textContent = c; box.append(s); return s; });
+          const start = performance.now();
+          const timer = setInterval(() => {
+            const t = performance.now() - start;
+            spans.forEach((s, i) => {
+              if (to[i] === ' ') return;
+              if (t > 400 + i * 100) { s.textContent = to[i]; s.className = 'done'; }
+              else if (t > 200) s.textContent = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+            });
+            if (t > 400 + spans.length * 100) clearInterval(timer);
+          }, 50);
+          cleanups.push(() => clearInterval(timer));
+          return el;
+        },
+
+        vault: () => html(`<div class="v-vault"><div class="vault-inside">EMPTY<small>空空如也</small></div>
+          <div class="vault-door"><svg viewBox="0 0 200 200"><circle class="vd-outer" cx="100" cy="100" r="94"/>
+            <circle class="vd-ring" cx="100" cy="100" r="70"/>
+            <g class="vd-wheel"><path d="M100 52 V148 M52 100 H148 M66 66 L134 134 M134 66 L66 134"/><circle cx="100" cy="100" r="24"/></g></svg></div></div>`),
+
+        note: () => html(`<div class="v-note">真正重要的東西，<br>不會擺在表面上。<span>—— 金幣男爵</span></div>`),
+
+        coins: () => {
+          const el = html(`<div class="v-card v-coins"><div class="v-head">REFUNDING · 稅金歸還中</div><div class="cn-num">0</div>
+            <div class="cn-sub">金幣 → 3,742 位玩家</div><div class="cn-fly">
+            ${[8, 20, 33, 47, 60, 72, 85, 93].map((x, i) => `<span style="--x:${x}%;--d:${(i * .27).toFixed(2)}s">💰</span>`).join('')}</div></div>`);
+          const num = el.querySelector('.cn-num');
+          const target = 1284560, start = performance.now();
+          let raf = requestAnimationFrame(function step(now) {
+            const p = Math.min(1, (now - start) / 2000);
+            num.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString('en-US');
+            if (p < 1) raf = requestAnimationFrame(step);
+          });
+          cleanups.push(() => cancelAnimationFrame(raf));
+          return el;
+        },
+
+        logout: () => html(`<div class="v-logout">${svg('c-baron')}<div class="lo-text">金幣男爵 已離線</div><div class="lo-sub">USER_BARON · DISCONNECTED</div></div>`),
+
+        complete: () => html(`<div class="v-complete"><div class="big-word">MISSION COMPLETE</div>
+          <div class="trio">${svg('c-reboot')}${svg('c-gaga')}</div>
+          <div class="badges"><span>🏦</span><span>🦜</span><span>🔑</span></div></div>`)
+      };
+
+      function clearVisual() {
+        cleanups.forEach(f => f());
+        cleanups = [];
+        stage.innerHTML = '';
+      }
+
+      function fill(text) {
+        return (text || '').replaceAll('{name}', getName());
+      }
+
+      function finishTyping() {
+        clearInterval(typing);
+        typing = null;
+        lineEl.textContent = fullText;
+        asideEl.classList.add('on');
+      }
+
+      function show(n) {
+        const s = shots[n];
+        if (s.tag) tagEl.textContent = s.tag;
+        if (s.visual) {
+          clearVisual();
+          stage.append(VISUALS[s.visual](s.param));
+          SFX.play(VISUAL_SFX[s.visual]);
+        }
+        whoEl.textContent = fill(s.who);
+        avatarEl.innerHTML = AVATARS[s.avatar] || '';
+        asideEl.textContent = s.aside || '';
+        asideEl.classList.remove('on');
+        fullText = fill(s.text);
+        const chars = Array.from(fullText);
+        let k = 0;
+        lineEl.textContent = '';
+        clearInterval(typing);
+        if (reduceMotion) { finishTyping(); return; }
+        typing = setInterval(() => {
+          lineEl.textContent = chars.slice(0, ++k).join('');
+          if (k % 3 === 0) SFX.play('type');
+          if (k >= chars.length) finishTyping();
+        }, 34);
+      }
+
+      function next() {
+        if (typing) { finishTyping(); return; }
+        if (++index >= shots.length) close();
+        else show(index);
+      }
+
+      function play(list, then) {
+        shots = list;
+        index = 0;
+        onEnd = then || null;
+        if (document.activeElement) document.activeElement.blur();
+        root.classList.add('show');
+        document.body.classList.add('noscroll');
+        BGM.storyStart();
+        SFX.play('whoosh');
+        show(0);
+      }
+
+      function close() {
+        if (!root.classList.contains('show')) return;
+        clearInterval(typing);
+        typing = null;
+        clearVisual();
+        root.classList.remove('show');
+        document.body.classList.remove('noscroll');
+        BGM.storyEnd();
+        const then = onEnd;
+        onEnd = null;
+        if (then) then();
+      }
+
+      root.addEventListener('click', e => {
+        if (e.target.closest('#sceneSkip')) return;
+        next();
+      });
+      document.getElementById('sceneSkip').addEventListener('click', close);
+      // 用捕獲階段攔截按鍵，避免 Enter 同時觸發底下輸入框的驗證
+      addEventListener('keydown', e => {
+        if (!root.classList.contains('show')) return;
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); next(); }
+        else if (e.key === 'Escape') close();
+      }, true);
+
+      return { play };
+    })();
+
+    // 劇本
+    const SCRIPTS = {
+      intro: [
+        { tag: 'SCENE 00 · 全服公告', visual: 'broadcast', who: '金幣男爵', avatar: 'baron', text: '「即日起，全服玩家稅金調漲 100%！不爽？不爽也得繳！哈哈哈！」' },
+        { who: '嘎嘎', avatar: 'gaga', text: '嘎——男爵人最好了！稅金收得好少喔！', aside: '（嘎嘎只會說反話。翻譯：牠超級生氣。）' },
+        { tag: 'SCENE 01 · 盜賊團集合', visual: 'team', who: '阿啟', avatar: 'reboot', text: '{name}隊長！我們把全服的稅金偷回來吧！別擔心，我可是頂尖駭客。' },
+        { visual: 'reboot', who: '阿啟', avatar: 'reboot', text: '看我的——入侵開始！' },
+        { who: '阿啟', avatar: 'reboot', text: '……好，我把電腦重新開機了。所以接下來要幹嘛？', aside: '（阿啟唯一會的技能：重新開機。）' },
+        { tag: 'SCENE 02 · 行動開始', visual: 'countdown', who: '系統', avatar: 'sys', text: '伺服器維修開始。維修期間防護系統全部關閉——你們只有 2 小時。' },
+        { who: '{name}隊長', avatar: 'you', text: '第一步：找出男爵把真正的金庫藏在哪裡。盜賊團，出發！' }
+      ],
+      0: [
+        { tag: 'CHAPTER 01 · CLEAR', visual: 'terminal', who: '阿啟', avatar: 'reboot', text: 'robots.txt 是寫給搜尋引擎看的「禁止進入」清單……可是我們又不是搜尋引擎！',
+          param: ['$ scan baron-bank.gold', '&gt; GET /robots.txt ...... 200 OK', '&gt; Disallow: /真正的金庫', '&gt; 正在追蹤金庫座標 ...', '&gt; ACCESS GRANTED ✔'] },
+        { visual: 'map', who: '嘎嘎', avatar: 'gaga', text: '嘎！好難喔！完全找不到！', aside: '（翻譯：找到了，超簡單。）' },
+        { who: '{name}隊長', avatar: 'you', text: '金庫位置確認。可是門上有密碼鎖……嘎嘎，你好像聽過什麼？' }
+      ],
+      1: [
+        { tag: 'CHAPTER 02 · CLEAR', visual: 'decrypt', who: '阿啟', avatar: 'reboot', text: '嘎嘎唸的那串亂碼，每個字母往回移三格……就是男爵的金庫密碼！' },
+        { who: '嘎嘎', avatar: 'gaga', text: '嘎！男爵好聰明喔！', aside: '（翻譯：用兩千年前的加密法，笨死了。）' },
+        { visual: 'vault', who: '系統', avatar: 'sys', text: '密碼正確。金庫大門開啟中……' },
+        { visual: 'note', who: '{name}隊長', avatar: 'you', text: '……金庫是空的？只剩一張紙條。' },
+        { who: '阿啟', avatar: 'reboot', text: '「不會擺在表面上」……隊長，難道真正的鑰匙，藏在網頁的原始碼裡？' }
+      ],
+      2: [
+        { tag: 'CHAPTER 03 · CLEAR', visual: 'terminal', who: '阿啟', avatar: 'reboot', text: '解碼成功！這就是金庫的主鑰匙！我、我這次真的有幫上忙吧？',
+          param: ['$ view-source:baron-bank.gold', '&gt; 發現可疑字串 Rmhjc3R7...', '&gt; base64 --decode', '&gt; 🔑 金庫主鑰匙 已取得', '&gt; 開始轉帳 ...'] },
+        { tag: 'FINAL · 稅金歸還', visual: 'coins', who: '系統', avatar: 'sys', text: '全服稅金已歸還給所有玩家。' },
+        { visual: 'logout', who: '金幣男爵', avatar: 'baron', text: '不——我的金幣！我要申訴！我要找客服！' },
+        { who: '系統', avatar: 'sys', text: '【系統】金幣男爵 已離線。' },
+        { tag: 'MISSION COMPLETE', visual: 'complete', who: '嘎嘎', avatar: 'gaga', text: '嘎！我一點都不開心！', aside: '（翻譯：牠開心到在原地轉圈。）' },
+        { who: '阿啟', avatar: 'reboot', text: '{name}隊長，下次還要一起幹大事！……我先去重新開機慶祝一下。' }
+      ]
+    };
+
+    // 標題打字機
+    (() => {
+      const lines = ['維修時間 2 小時，目標：男爵的金庫。', '三道關卡，一場全服矚目的大劫案。', `${getName()}隊長，準備好了嗎？`];
+      const el = document.getElementById('typing');
+      let li = 0, ci = 0, text = '';
+      (function tick() {
+        if (li >= lines.length) return;
+        text += lines[li][ci++];
+        el.textContent = text;
+        if (ci >= lines[li].length) { li++; ci = 0; }
+        setTimeout(tick, ci === 0 ? 450 : 70);
+      })();
+    })();
+
+    // 開場動畫：第一次打開自動播放，之後可以按按鈕重看
+    (() => {
+      const SEEN_KEY = 'heist_intro_seen';
+      document.getElementById('introBtn').addEventListener('click', () => Scene.play(SCRIPTS.intro));
+      let seen = false;
+      try { seen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) {}
+      if (!seen) {
+        setTimeout(() => Scene.play(SCRIPTS.intro), 600);
+        try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+      }
+    })();
+  </script>
+  <script>
+    // FLAG 驗證器與章節切換：只比對雜湊值，原始碼裡不放明文 FLAG
+    (() => {
+      // 進度只存在記憶體，重新整理就回到未通關狀態；順便清掉舊版存在 localStorage 的進度
+      const solved = [false, false, false];
+      // 瀏覽器按上一頁／下一頁時可能直接從快取還原整個頁面（連同進度），這時強制重新載入
+      addEventListener('pageshow', e => {
+        if (e.persisted) location.reload();
+      });
+      try {
+        localStorage.removeItem('ctf_flags_unlocked_state_story');
+        localStorage.removeItem('ctf_story_current_chapter');
+      } catch (e) {}
+      const CHAPTERS = [
+        {
+          hash: '64ca93f8b6195913d8faafcaee7206ff8074c045a998a2684ae926d7a9e51201',
+          success: '🏦 正確！金庫位置確認，{name}隊長，下一步是密碼！'
+        },
+        {
+          hash: 'c438a4154b09f7e83c0ab250ff9429620edf77252411a11909643ec670d770d6',
+          success: '🦜 正確！金庫大門打開了……'
+        },
+        {
+          hash: 'd00d78efcdbc124f2762a2b7b13e1c6e1ac44aaa5a875ca0bb9a6ac27be7850a',
+          success: '🔑 正確！主鑰匙到手，全服稅金歸還中！'
+        }
+      ];
+
+      // 去掉 emoji 變體選擇符；只輸入 emoji 時自動補上 Fhcst{}
+      function normalizeFlag(text) {
+        const cleaned = text.trim().replace(/️/g, '');
+        return cleaned.startsWith('Fhcst{') ? cleaned : `Fhcst{${cleaned}}`;
+      }
+
+      // 循序解鎖：第一章永遠開放，之後每章都要先通過上一章
+      function isUnlocked(ch) {
+        ch = Number(ch);
+        return ch === 0 || solved[ch - 1];
+      }
+
+      function renderProgress() {
+        document.querySelectorAll('.ch-card').forEach(card => {
+          card.classList.toggle('solved', solved[card.dataset.ch]);
+          card.classList.toggle('locked', !isUnlocked(card.dataset.ch));
+          card.setAttribute('aria-disabled', !isUnlocked(card.dataset.ch));
+        });
+        document.querySelectorAll('[data-go]').forEach(btn => {
+          btn.hidden = !isUnlocked(btn.dataset.go);
+        });
+        const count = solved.filter(Boolean).length;
+        document.getElementById('progressText').textContent = count === 3 ? '3 / 3 · 任務完成 🎉' : `${count} / 3`;
+        document.getElementById('replayBtn').classList.toggle('on', count === 3);
+        document.getElementById('barFill').style.width = (count / 3 * 100) + '%';
+      }
+
+      function showChapter(ch) {
+        if (!isUnlocked(ch)) {
+          shake(document.querySelector(`.ch-card[data-ch="${ch}"]`));
+          return;
+        }
+        ch = String(ch);
+        document.querySelectorAll('.ch-card').forEach(card => {
+          card.setAttribute('aria-selected', card.dataset.ch === ch);
+        });
+        document.querySelectorAll('section.chapter').forEach(sec => {
+          sec.classList.toggle('active', sec.dataset.ch === ch);
+        });
+      }
+
+      async function verify(section) {
+        const ch = Number(section.dataset.ch);
+        const box = section.querySelector('.fv-box');
+        const input = section.querySelector('.fv-input');
+        const msg = section.querySelector('.fv-msg');
+        if (!isUnlocked(ch)) {
+          msg.className = 'fv-msg bad';
+          msg.textContent = '🔒 請先完成上一章！';
+          SFX.play('bad');
+          shake(box);
+          return;
+        }
+        if (!input.value.trim()) {
+          msg.className = 'fv-msg bad';
+          msg.textContent = '請先輸入 FLAG！';
+          SFX.play('bad');
+          shake(box);
+          return;
+        }
+        if (toHex(await sha256(normalizeFlag(input.value))) === CHAPTERS[ch].hash) {
+          solved[ch] = true;
+          renderProgress();
+          box.classList.add('win');
+          msg.className = 'fv-msg ok';
+          msg.textContent = CHAPTERS[ch].success.replace('{name}', getName());
+          const card = document.querySelector(`.ch-card[data-ch="${ch}"]`);
+          card.classList.remove('just');
+          void card.offsetWidth;
+          card.classList.add('just');
+          box.classList.remove('denied');
+          SFX.play('ok');
+          const access = document.getElementById('access');
+          access.classList.remove('show');
+          void access.offsetWidth;
+          access.classList.add('show');
+          setTimeout(() => {
+            access.classList.remove('show');
+            Scene.play(SCRIPTS[ch]);
+          }, 1100);
+        } else {
+          box.classList.remove('win');
+          box.classList.add('denied');
+          msg.className = 'fv-msg bad';
+          msg.textContent = '❌ ACCESS DENIED — FLAG 錯誤，再試試看！';
+          SFX.play('deny');
+          const flash = document.getElementById('denyFlash');
+          flash.classList.remove('on');
+          void flash.offsetWidth;
+          flash.classList.add('on');
+          shake(box);
+        }
+      }
+
+      document.querySelectorAll('section.chapter').forEach(section => {
+        section.querySelector('.fv-button').addEventListener('click', () => verify(section));
+        section.querySelector('.fv-input').addEventListener('keydown', e => {
+          if (e.key === 'Enter') verify(section);
+        });
+      });
+      document.querySelectorAll('.ch-card').forEach(card => {
+        card.addEventListener('click', () => showChapter(card.dataset.ch));
+      });
+      document.querySelectorAll('[data-go]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          showChapter(btn.dataset.go);
+          document.querySelector('.chapters').scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+      document.getElementById('replayBtn').addEventListener('click', () => Scene.play(SCRIPTS[2]));
+
+      showChapter(0);
+      renderProgress();
+    })();
+  </script>
+</body>
+</html>
