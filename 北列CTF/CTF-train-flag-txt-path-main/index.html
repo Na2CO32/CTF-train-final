@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第一章・遺失的禮物</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #141c31;
+      --text: #edf2ff;
+      --muted: #a9b6d3;
+      --accent: #65e6c3;
+      --line: #2a3858;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      padding: 24px 16px; font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif;
+      background: radial-gradient(circle at top, #1a2c4d 0, var(--bg) 55%);
+      color: var(--text);
+    }
+    main {
+      width: min(720px, 100%); padding: clamp(24px, 5vw, 44px);
+      background: rgba(20, 28, 49, .94); border: 1px solid var(--line);
+      border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,.35);
+    }
+    .tag {
+      display: inline-block; color: var(--accent); border: 1px solid #326c68;
+      border-radius: 999px; padding: 6px 12px; font-size: .85rem; letter-spacing: .06em;
+    }
+    h1 { margin: 18px 0 12px; font-size: clamp(1.8rem, 5vw, 2.6rem); }
+    p { color: var(--muted); line-height: 1.8; }
+    .mission {
+      margin: 26px 0; padding: 18px 20px; border-left: 3px solid var(--accent);
+      background: #0d1528; border-radius: 0 12px 12px 0;
+    }
+    .mission strong { color: var(--text); }
+    details {
+      margin-top: 14px; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; background: #10182b;
+    }
+    summary { cursor: pointer; font-weight: 650; color: var(--accent); }
+    details p { margin-bottom: 4px; }
+    footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); font-size: .88rem; }
+    .player-name { color: var(--accent); font-weight: 700; }
+    .name-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 18px 0 6px; color: var(--muted); font-size: .92rem; }
+    .name-bar input { flex: 1 1 140px; background: #0d1528; border: 1px solid var(--line); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 1rem; outline: none; }
+    .name-bar input:focus { border-color: var(--accent); }
+    .name-bar button { background: #1f4f4a; color: var(--text); border: 1px solid #326c68; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+    .name-bar button:hover { background: #276660; }
+    code { color: var(--text); background: #26324d; padding: 2px 6px; border-radius: 5px; border: 1px solid #3b4a69; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="tag">WEB CHALLENGE · CHAPTER 01</span>
+    <h1>遺失的禮物 🎁</h1>
+
+    <div class="name-bar">
+      <label for="nameInput">你的名字：</label>
+      <input id="nameInput" type="text" maxlength="20" placeholder="不填就是小明">
+      <button onclick="saveName()">確定</button>
+    </div>
+
+    <p>今天是 <span class="player-name">小明</span> 和女朋友交往一週年的約會日。</p>
+    <p><span class="player-name">小明</span> 早就準備好一份神秘禮物，為了不讓女朋友提前發現，還特地把它藏在<strong>這個網站</strong>的某個角落……</p>
+    <p>沒想到出門前，<span class="player-name">小明</span> 才驚覺——自己完全忘記禮物藏在哪裡了！😱</p>
+    <p>距離約會只剩一個小時，請你幫 <span class="player-name">小明</span> 把禮物找回來！</p>
+
+    <section class="mission">
+      <strong>🎯 任務目標</strong>
+      <p>🧠 <span class="player-name">小明</span> 努力回想：「我記得……我有跟網站上的<strong>搜尋引擎機器人</strong>說過，有個地方絕對不准任何人進去偷看……」請找出藏在這個網站裡的禮物 Flag。</p>
+    </section>
+
+    <h2>提示</h2>
+    <details>
+      <summary>提示：還是想不起來？</summary>
+      <p>在網址後面輸入 <code>/robots.txt</code> 試試看吧？</p>
+    </details>
+
+    <!-- FLAG 驗證器 -->
+    <style>
+      .fv-box { margin-top: 28px; padding: 18px 20px; border: 1px solid #2a3858; border-radius: 12px; background: #0d1528; text-align: left; font-family: inherit; }
+      .fv-title { color: #65e6c3; font-weight: bold; margin: 0 0 12px; font-size: 1.05rem; }
+      .fv-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .fv-row input { flex: 1 1 180px; background: transparent; border: 1px solid #2a3858; color: #edf2ff; padding: 9px 12px; border-radius: 8px; font-size: 1rem; font-family: 'Courier New', Courier, monospace; outline: none; }
+      .fv-row input:focus { border-color: #65e6c3; }
+      .fv-row button { background: #1f4f4a; color: #edf2ff; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 1rem; font-family: inherit; }
+      .fv-row button:hover { filter: brightness(1.2); }
+      .fv-msg { margin: 12px 0 0; min-height: 1.4em; line-height: 1.7; color: #edf2ff; }
+      .fv-msg.ok { color: #4ade80; }
+      .fv-msg.bad { color: #f87171; }
+    </style>
+    <section class="fv-box">
+      <p class="fv-title">🚩 FLAG 驗證器</p>
+      <div class="fv-row">
+        <input id="fvInput" type="text" placeholder="Fhcst{...}" autocomplete="off">
+        <button id="fvButton" type="button">驗證</button>
+      </div>
+      <p id="fvMsg" class="fv-msg"></p>
+    </section>
+
+    <footer>
+      <p>找到禮物後，也可以把 FLAG 拿到驗證平台登記。</p>
+      <p>下一章：<span class="player-name">小明</span> 還得趕去花店取花 💐</p>
+    </footer>
+  </main>
+
+  <script>
+    // 玩家名字：存在 localStorage，沒填就預設為小明
+    const NAME_KEY = 'ctf_player_name';
+
+    function getName() {
+      try {
+        return (localStorage.getItem(NAME_KEY) || '').trim() || '小明';
+      } catch (e) {
+        return '小明';
+      }
+    }
+
+    function renderName() {
+      const name = getName();
+      document.querySelectorAll('.player-name').forEach(el => el.textContent = name);
+      document.getElementById('nameInput').value = name === '小明' ? '' : name;
+    }
+
+    function saveName() {
+      const name = document.getElementById('nameInput').value.trim();
+      try {
+        if (name) localStorage.setItem(NAME_KEY, name);
+        else localStorage.removeItem(NAME_KEY);
+      } catch (e) {}
+      renderName();
+    }
+
+    document.getElementById('nameInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveName();
+    });
+    renderName();
+  </script>
+  <script>
+    // FLAG 驗證器：只比對雜湊值，原始碼裡不放明文 FLAG
+    (() => {
+      const CHAPTER = 0;
+      const FLAG_HASH = '200186a7f9a823bb7af67626315ebe6100828d32419a9e80eaf91143babeaa30';
+      const SUCCESS_MSG = '🎁 找到禮物了！{name} 鬆了一口氣，接下來趕快去花店取花吧！';
+      const STATE_KEY = 'ctf_flags_unlocked_state_story';
+
+      // 去掉 emoji 變體選擇符；只輸入 emoji 時自動補上 Fhcst{}
+      function normalizeFlag(text) {
+        const cleaned = text.trim().replace(/️/g, '');
+        return cleaned.startsWith('Fhcst{') ? cleaned : `Fhcst{${cleaned}}`;
+      }
+
+      async function hashHex(text) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+      }
+
+      // 與驗證平台共用進度（同網域時會同步）
+      function markSolved() {
+        try {
+          let state = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+          if (!Array.isArray(state) || state.length !== 3) state = [false, false, false];
+          state[CHAPTER] = true;
+          localStorage.setItem(STATE_KEY, JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      async function verify() {
+        const input = document.getElementById('fvInput');
+        const msg = document.getElementById('fvMsg');
+        if (!input.value.trim()) {
+          msg.className = 'fv-msg bad';
+          msg.textContent = '請先輸入 FLAG！';
+          return;
+        }
+        if (await hashHex(normalizeFlag(input.value)) === FLAG_HASH) {
+          markSolved();
+          msg.className = 'fv-msg ok';
+          msg.textContent = '✅ 正確！' + SUCCESS_MSG.replace('{name}', getName());
+        } else {
+          msg.className = 'fv-msg bad';
+          msg.textContent = '❌ FLAG 錯誤，再試試看！';
+        }
+      }
+
+      document.getElementById('fvButton').addEventListener('click', verify);
+      document.getElementById('fvInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') verify();
+      });
+    })();
+  </script>
+</body>
+</html>
