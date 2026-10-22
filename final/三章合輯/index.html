@@ -354,13 +354,13 @@
       padding: 14px 18px; border-radius: 24px; background: var(--card); color: var(--text); border: 3px solid var(--mint-deep);
       box-shadow: 0 6px 0 #1a212b;
     }
-    .scene-dialog .avatar { flex: none; width: 64px; height: 64px; border-radius: 50%; background: var(--card-soft); border: 2px solid var(--line); display: grid; place-items: center; overflow: hidden; }
-    .scene-dialog .avatar svg { width: 58px; height: auto; }
-    .scene-dialog .avatar .emo { font-size: 2rem; }
+    .scene-dialog .avatar { flex: none; width: 80px; height: 80px; border-radius: 50%; background: var(--card-soft); border: 2px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+    .scene-dialog .avatar svg { width: 72px; height: auto; }
+    .scene-dialog .avatar .emo { font-size: 2.5rem; }
     .dialog-body { flex: 1; min-width: 0; }
-    .scene-dialog .who { font-weight: 900; color: var(--mint-deep); margin-bottom: 2px; }
-    .scene-dialog .line { min-height: 3.4em; line-height: 1.7; font-size: 1.08rem; }
-    .scene-dialog .aside { font-size: .9rem; color: var(--muted); opacity: 0; transition: opacity .3s; }
+    .scene-dialog .who { font-size: 1.2rem; font-weight: 900; color: var(--mint-deep); margin-bottom: 4px; }
+    .scene-dialog .line { min-height: 3.4em; line-height: 1.6; font-size: clamp(1.2rem, 4.2vw, 1.5rem); }
+    .scene-dialog .aside { font-size: 1.05rem; color: var(--muted); opacity: 0; transition: opacity .3s; }
     .scene-dialog .aside.on { opacity: 1; }
     .scene-hint { text-align: center; margin-top: 10px; font-family: var(--mono); font-size: .78rem; color: rgba(191, 227, 214, .7); animation: blink 1.6s infinite; }
 
@@ -501,8 +501,8 @@
       .ch-card { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; }
       .ch-card .emoji { grid-row: span 2; }
       .ch-card .num { margin-top: 0; }
-      .scene-dialog .avatar { width: 52px; height: 52px; }
-      .scene-dialog .avatar svg { width: 46px; }
+      .scene-dialog .avatar { width: 58px; height: 58px; }
+      .scene-dialog .avatar svg { width: 52px; }
       .scene-skip { left: auto; right: 40px; transform: none; }
       .hud .clock { display: none; }
     }
