@@ -18,5 +18,6 @@ https://na2co32.github.io/CTF-train-final/
 | 伺服器搶劫案（三章題目） | `final/三章合輯/index.html` |
 | Base64 與 ROT13 工具 | `final/base64與ROT13的工具/index.html` |
 | 幸運大輪盤 | `final/輪盤/index.html` |
+| 幸運抽卡機 | `final/抽卡/index.html` |
 
 「伺服器搶劫案」的背景音樂 `Level Up!.mp3` 必須和它的 `index.html` 放在同一個資料夾，檔名不要更改。
